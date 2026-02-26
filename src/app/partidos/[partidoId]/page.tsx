@@ -8,11 +8,12 @@ import { MapPin, Clock } from 'lucide-react';
 import Image from 'next/image';
 
 interface Props {
-  params: { partidoId: string };
+  params: Promise<{ partidoId: string }>;
 }
 
-export default function DetallePartidoPage({ params }: Props) {
-  const partido = PARTIDOS.find((p) => p.id === parseInt(params.partidoId));
+export default async function DetallePartidoPage({ params }: Props) {
+  const { partidoId } = await params;
+  const partido = PARTIDOS.find((p) => p.id === parseInt(partidoId));
 
   if (!partido) notFound();
 

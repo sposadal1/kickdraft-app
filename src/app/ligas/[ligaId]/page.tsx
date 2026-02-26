@@ -1,15 +1,15 @@
-import { notFound } from 'next/navigation';
 import { Share2, Users } from 'lucide-react';
 
 interface Props {
-  params: { ligaId: string };
+  params: Promise<{ ligaId: string }>;
 }
 
-export default function DetalleLigaPage({ params }: Props) {
+export default async function DetalleLigaPage({ params }: Props) {
+  const { ligaId } = await params;
   // En producción se obtendría de Supabase
   // Por ahora mostramos una página de placeholder
   const liga = {
-    id: params.ligaId,
+    id: ligaId,
     nombre: 'Mi Liga',
     codigoInvitacion: 'ABC12345',
     totalMiembros: 0,

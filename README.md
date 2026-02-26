@@ -6,7 +6,7 @@
 
 | Tecnología | Uso |
 |------------|-----|
-| **Next.js 14** | Framework con App Router |
+| **Next.js 15** | Framework con App Router |
 | **TypeScript** | Tipado estático |
 | **Tailwind CSS** | Estilos utilitarios |
 | **Supabase** | Base de datos (PostgreSQL) + Autenticación |
