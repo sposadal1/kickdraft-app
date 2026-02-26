@@ -76,6 +76,7 @@ export function calcularTablaGrupo(
     f.diferencia = f.golesFavor - f.golesContra;
   });
 
+  // Criterios FIFA: 1) puntos, 2) diferencia de goles, 3) goles a favor
   tabla.sort((a, b) => {
     if (b.puntos !== a.puntos) return b.puntos - a.puntos;
     if (b.diferencia !== a.diferencia) return b.diferencia - a.diferencia;
