@@ -5,12 +5,12 @@ export const EQUIPOS: Equipo[] = [
   { id: 1, nombre: 'México', nombreCorto: 'MEX', codigoPais: 'MX', grupoId: 'A', banderaUrl: 'https://flagcdn.com/mx.svg' },
   { id: 2, nombre: 'Sudáfrica', nombreCorto: 'RSA', codigoPais: 'ZA', grupoId: 'A', banderaUrl: 'https://flagcdn.com/za.svg' },
   { id: 3, nombre: 'Corea del Sur', nombreCorto: 'KOR', codigoPais: 'KR', grupoId: 'A', banderaUrl: 'https://flagcdn.com/kr.svg' },
-  { id: 4, nombre: 'Playoff UEFA D', nombreCorto: 'PLD', codigoPais: 'EU', grupoId: 'A' },
+  { id: 4, nombre: 'Playoff UEFA D', nombreCorto: 'PLD', codigoPais: 'XX', grupoId: 'A' },
   // Grupo B
   { id: 5, nombre: 'Canadá', nombreCorto: 'CAN', codigoPais: 'CA', grupoId: 'B', banderaUrl: 'https://flagcdn.com/ca.svg' },
   { id: 6, nombre: 'Qatar', nombreCorto: 'QAT', codigoPais: 'QA', grupoId: 'B', banderaUrl: 'https://flagcdn.com/qa.svg' },
   { id: 7, nombre: 'Suiza', nombreCorto: 'SUI', codigoPais: 'CH', grupoId: 'B', banderaUrl: 'https://flagcdn.com/ch.svg' },
-  { id: 8, nombre: 'Playoff UEFA A', nombreCorto: 'PLA', codigoPais: 'EU', grupoId: 'B' },
+  { id: 8, nombre: 'Playoff UEFA A', nombreCorto: 'PLA', codigoPais: 'XX', grupoId: 'B' },
   // Grupo C
   { id: 9, nombre: 'Brasil', nombreCorto: 'BRA', codigoPais: 'BR', grupoId: 'C', banderaUrl: 'https://flagcdn.com/br.svg' },
   { id: 10, nombre: 'Marruecos', nombreCorto: 'MAR', codigoPais: 'MA', grupoId: 'C', banderaUrl: 'https://flagcdn.com/ma.svg' },
@@ -20,7 +20,7 @@ export const EQUIPOS: Equipo[] = [
   { id: 13, nombre: 'Estados Unidos', nombreCorto: 'USA', codigoPais: 'US', grupoId: 'D', banderaUrl: 'https://flagcdn.com/us.svg' },
   { id: 14, nombre: 'Paraguay', nombreCorto: 'PAR', codigoPais: 'PY', grupoId: 'D', banderaUrl: 'https://flagcdn.com/py.svg' },
   { id: 15, nombre: 'Australia', nombreCorto: 'AUS', codigoPais: 'AU', grupoId: 'D', banderaUrl: 'https://flagcdn.com/au.svg' },
-  { id: 16, nombre: 'Playoff UEFA C', nombreCorto: 'PLC', codigoPais: 'EU', grupoId: 'D' },
+  { id: 16, nombre: 'Playoff UEFA C', nombreCorto: 'PLC', codigoPais: 'XX', grupoId: 'D' },
   // Grupo E
   { id: 17, nombre: 'Alemania', nombreCorto: 'GER', codigoPais: 'DE', grupoId: 'E', banderaUrl: 'https://flagcdn.com/de.svg' },
   { id: 18, nombre: 'Curazao', nombreCorto: 'CUW', codigoPais: 'CW', grupoId: 'E', banderaUrl: 'https://flagcdn.com/cw.svg' },
@@ -29,7 +29,7 @@ export const EQUIPOS: Equipo[] = [
   // Grupo F
   { id: 21, nombre: 'Países Bajos', nombreCorto: 'NED', codigoPais: 'NL', grupoId: 'F', banderaUrl: 'https://flagcdn.com/nl.svg' },
   { id: 22, nombre: 'Japón', nombreCorto: 'JPN', codigoPais: 'JP', grupoId: 'F', banderaUrl: 'https://flagcdn.com/jp.svg' },
-  { id: 23, nombre: 'Playoff UEFA B', nombreCorto: 'PLB', codigoPais: 'EU', grupoId: 'F' },
+  { id: 23, nombre: 'Playoff UEFA B', nombreCorto: 'PLB', codigoPais: 'XX', grupoId: 'F' },
   { id: 24, nombre: 'Túnez', nombreCorto: 'TUN', codigoPais: 'TN', grupoId: 'F', banderaUrl: 'https://flagcdn.com/tn.svg' },
   // Grupo G
   { id: 25, nombre: 'Bélgica', nombreCorto: 'BEL', codigoPais: 'BE', grupoId: 'G', banderaUrl: 'https://flagcdn.com/be.svg' },
