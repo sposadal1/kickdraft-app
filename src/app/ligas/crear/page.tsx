@@ -1,16 +1,30 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { generarCodigoInvitacion } from '@/lib/utils';
 import { Trophy, Copy, Check } from 'lucide-react';
 import Link from 'next/link';
+import { supabase } from '@/lib/supabase';
 
 export default function CrearLigaPage() {
   const router = useRouter();
+  const [autenticado, setAutenticado] = useState<boolean | null>(null);
   const [nombre, setNombre] = useState('');
   const [ligaCreada, setLigaCreada] = useState<{ nombre: string; codigo: string } | null>(null);
   const [copiado, setCopiado] = useState(false);
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data, error }) => {
+      const isAuth = !error && !!data.user;
+      setAutenticado(isAuth);
+      if (!isAuth) router.replace('/auth/login');
+    });
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+      setAutenticado(!!session?.user);
+    });
+    return () => listener.subscription.unsubscribe();
+  }, [router]);
 
   function handleCrear(e: React.FormEvent) {
     e.preventDefault();
@@ -25,6 +39,10 @@ export default function CrearLigaPage() {
     await navigator.clipboard.writeText(ligaCreada.codigo);
     setCopiado(true);
     setTimeout(() => setCopiado(false), 2000);
+  }
+
+  if (autenticado === null) {
+    return <div className="flex items-center justify-center py-20"><div className="text-gray-500">Cargando...</div></div>;
   }
 
   if (ligaCreada) {
@@ -74,7 +92,7 @@ export default function CrearLigaPage() {
             type="text"
             value={nombre}
             onChange={(e) => setNombre(e.target.value)}
-            placeholder="Ej: Los crack del trabajo"
+            placeholder="Ej: Los cracks del trabajo"
             maxLength={50}
             required
             className="w-full bg-gray-900 border border-gray-700 text-white placeholder-gray-500 rounded-xl px-4 py-3 focus:border-verde-500 focus:outline-none transition-colors"
