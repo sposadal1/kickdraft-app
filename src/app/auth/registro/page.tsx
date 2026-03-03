@@ -2,12 +2,16 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { Trophy, Eye, EyeOff } from 'lucide-react';
+import { supabase } from '@/lib/supabase';
 
 export default function RegistroPage() {
-  const [form, setForm] = useState({ nombre: '', apellido: '', email: '', password: '' });
+  const router = useRouter();
+  const [form, setForm] = useState({ nombre: '', apellido: '', email: '', password: '', confirmPassword: '' });
   const [mostrarPassword, setMostrarPassword] = useState(false);
   const [cargando, setCargando] = useState(false);
+  const [error, setError] = useState('');
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
@@ -16,8 +20,47 @@ export default function RegistroPage() {
   async function handleRegistro(e: React.FormEvent) {
     e.preventDefault();
     setCargando(true);
-    // Aquí se integra Supabase Auth
+    setError('');
+
+    if (form.password !== form.confirmPassword) {
+      setError('Las contraseñas no coinciden');
+      setCargando(false);
+      return;
+    }
+
+    const { data, error } = await supabase.auth.signUp({
+      email: form.email,
+      password: form.password,
+      options: {
+        data: {
+          nombre: form.nombre,
+          apellido: form.apellido ?? '',
+        },
+      },
+    });
+
+    if (error) {
+      setError(error.message);
+    } else if (data.user) {
+      await supabase.from('perfiles').upsert({
+        id: data.user.id,
+        nombre: form.nombre,
+        apellido: form.apellido ?? '',
+        email: form.email,
+      });
+      router.push('/');
+      router.refresh();
+    }
     setCargando(false);
+  }
+
+  async function handleGoogle() {
+    await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: `${window.location.origin}/auth/callback`,
+      },
+    });
   }
 
   return (
@@ -33,7 +76,7 @@ export default function RegistroPage() {
 
         <div className="bg-gray-900 border border-gray-800 rounded-2xl p-8">
           {/* Google */}
-          <button className="w-full flex items-center justify-center gap-3 bg-white hover:bg-gray-100 text-gray-900 font-semibold py-3 rounded-xl mb-6 transition-colors">
+          <button onClick={handleGoogle} className="w-full flex items-center justify-center gap-3 bg-white hover:bg-gray-100 text-gray-900 font-semibold py-3 rounded-xl mb-6 transition-colors">
             <svg viewBox="0 0 24 24" className="w-5 h-5" fill="none">
               <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
               <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
@@ -50,6 +93,7 @@ export default function RegistroPage() {
           </div>
 
           <form onSubmit={handleRegistro} className="space-y-4">
+            {error && <p className="text-red-400 text-sm text-center mb-4">{error}</p>}
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-2">Nombre *</label>
@@ -111,6 +155,20 @@ export default function RegistroPage() {
                   {mostrarPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-2">Confirmar contraseña *</label>
+              <input
+                type="password"
+                name="confirmPassword"
+                value={form.confirmPassword}
+                onChange={handleChange}
+                required
+                minLength={8}
+                placeholder="Repite tu contraseña"
+                className="w-full bg-gray-800 border border-gray-700 text-white placeholder-gray-500 rounded-xl px-4 py-3 focus:border-verde-500 focus:outline-none transition-colors"
+              />
             </div>
 
             <button
