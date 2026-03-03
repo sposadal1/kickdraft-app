@@ -1,11 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Partido } from '@/types/partido';
 import { Equipo } from '@/types/equipo';
 import { getPuntosPorFase } from '@/lib/puntuacion';
 import { formatearFecha, formatearHora } from '@/lib/utils';
-import { Save, Check, Lock } from 'lucide-react';
+import { Lock } from 'lucide-react';
 import Image from 'next/image';
 
 interface Props {
@@ -31,6 +31,22 @@ export default function InputMarcador({
 }: Props) {
   const [golesLocal, setGolesLocal] = useState(pronosticoInicial?.golesLocal ?? 0);
   const [golesVisitante, setGolesVisitante] = useState(pronosticoInicial?.golesVisitante ?? 0);
+
+  const esPrimerRender = useRef(true);
+
+  useEffect(() => {
+    if (esPrimerRender.current) {
+      esPrimerRender.current = false;
+      return;
+    }
+    if (bloqueado) return;
+
+    const timer = setTimeout(() => {
+      onGuardar(golesLocal, golesVisitante);
+    }, 900);
+
+    return () => clearTimeout(timer);
+  }, [golesLocal, golesVisitante, bloqueado, onGuardar]);
 
   const puntos = getPuntosPorFase(partido.fase);
 
@@ -90,39 +106,16 @@ export default function InputMarcador({
         </div>
       </div>
 
-      {/* Puntos posibles y botón guardar */}
+      {/* Puntos posibles e indicador de estado */}
       <div className="mt-3 flex items-center justify-between">
         <span className="text-xs text-gray-500">
           Puntos posibles: <span className="text-verde-400 font-bold">{puntos.resultado}</span> resultado /{' '}
           <span className="text-verde-400 font-bold">{puntos.exacto}</span> exacto
         </span>
-        {!bloqueado && (
-          <button
-            onClick={() => onGuardar(golesLocal, golesVisitante)}
-            disabled={guardando || guardado}
-            className={`flex items-center gap-1 text-white text-xs font-medium px-3 py-1.5 rounded-lg transition-colors disabled:cursor-not-allowed ${
-              guardado
-                ? 'bg-green-600'
-                : guardando
-                ? 'bg-gray-600'
-                : 'bg-verde-600 hover:bg-verde-700'
-            }`}
-          >
-            {guardado ? (
-              <>
-                <Check className="w-3 h-3" />
-                Guardado
-              </>
-            ) : guardando ? (
-              'Guardando...'
-            ) : (
-              <>
-                <Save className="w-3 h-3" />
-                Guardar
-              </>
-            )}
-          </button>
-        )}
+        <div className="text-xs">
+          {guardando && <span className="text-gray-400">Guardando...</span>}
+          {guardado && !guardando && <span className="text-verde-400">✓ Guardado</span>}
+        </div>
       </div>
     </div>
   );
