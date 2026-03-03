@@ -6,32 +6,69 @@ import { generarCodigoInvitacion } from '@/lib/utils';
 import { Trophy, Copy, Check } from 'lucide-react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
+import { User } from '@supabase/supabase-js';
 
 export default function CrearLigaPage() {
   const router = useRouter();
-  const [autenticado, setAutenticado] = useState<boolean | null>(null);
+  const [usuario, setUsuario] = useState<User | null | undefined>(undefined);
   const [nombre, setNombre] = useState('');
   const [ligaCreada, setLigaCreada] = useState<{ nombre: string; codigo: string } | null>(null);
   const [copiado, setCopiado] = useState(false);
+  const [cargando, setCargando] = useState(false);
+  const [error, setError] = useState('');
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data, error }) => {
       const isAuth = !error && !!data.user;
-      setAutenticado(isAuth);
-      if (!isAuth) router.replace('/auth/login');
+      if (!isAuth) {
+        setUsuario(null);
+        router.replace('/auth/login');
+      } else {
+        setUsuario(data.user);
+      }
     });
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
-      setAutenticado(!!session?.user);
+      setUsuario(session?.user ?? null);
     });
     return () => listener.subscription.unsubscribe();
   }, [router]);
 
-  function handleCrear(e: React.FormEvent) {
+  async function handleCrear(e: React.FormEvent) {
     e.preventDefault();
-    if (!nombre.trim()) return;
+    if (!nombre.trim() || !usuario) return;
+    setCargando(true);
+    setError('');
 
     const codigo = generarCodigoInvitacion();
-    setLigaCreada({ nombre: nombre.trim(), codigo });
+
+    const { data: liga, error: ligaError } = await supabase
+      .from('ligas')
+      .insert({
+        nombre: nombre.trim(),
+        codigo_invitacion: codigo,
+        creador_id: usuario.id,
+      })
+      .select()
+      .single();
+
+    if (ligaError || !liga) {
+      setError('Error al crear la liga');
+      setCargando(false);
+      return;
+    }
+
+    const { error: miembroError } = await supabase
+      .from('miembros_liga')
+      .insert({ liga_id: liga.id, usuario_id: usuario.id, total_puntos: 0 });
+
+    if (miembroError) {
+      setError('Liga creada pero hubo un error al unirte como miembro');
+      setCargando(false);
+      return;
+    }
+
+    setLigaCreada({ nombre: liga.nombre, codigo: liga.codigo_invitacion });
+    setCargando(false);
   }
 
   async function copiarCodigo() {
@@ -41,7 +78,7 @@ export default function CrearLigaPage() {
     setTimeout(() => setCopiado(false), 2000);
   }
 
-  if (autenticado === null) {
+  if (usuario === undefined) {
     return <div className="flex items-center justify-center py-20"><div className="text-gray-500">Cargando...</div></div>;
   }
 
@@ -109,12 +146,14 @@ export default function CrearLigaPage() {
           </div>
         </div>
 
+        {error && <p className="text-red-400 text-sm">{error}</p>}
+
         <button
           type="submit"
-          disabled={!nombre.trim()}
+          disabled={!nombre.trim() || cargando}
           className="w-full bg-verde-600 hover:bg-verde-700 disabled:bg-gray-700 disabled:text-gray-500 text-white font-bold py-4 rounded-xl transition-colors"
         >
-          Crear liga
+          {cargando ? 'Creando...' : 'Crear liga'}
         </button>
       </form>
     </div>
