@@ -1,13 +1,28 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Plus, Hash, Trophy, LogIn } from 'lucide-react';
+import { supabase } from '@/lib/supabase';
 
 export default function LigasPage() {
-  const [autenticado] = useState(false);
+  const [autenticado, setAutenticado] = useState<boolean | null>(null);
   const [mostrarUnirse, setMostrarUnirse] = useState(false);
   const [codigoInvitacion, setCodigoInvitacion] = useState('');
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data, error }) => {
+      setAutenticado(!error && !!data.user);
+    });
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+      setAutenticado(!!session?.user);
+    });
+    return () => listener.subscription.unsubscribe();
+  }, []);
+
+  if (autenticado === null) {
+    return <div className="flex items-center justify-center py-20"><div className="text-gray-500">Cargando...</div></div>;
+  }
 
   if (!autenticado) {
     return (
