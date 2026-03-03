@@ -5,7 +5,7 @@ import { Partido } from '@/types/partido';
 import { Equipo } from '@/types/equipo';
 import { getPuntosPorFase } from '@/lib/puntuacion';
 import { formatearFecha, formatearHora } from '@/lib/utils';
-import { Save } from 'lucide-react';
+import { Save, Check, Lock } from 'lucide-react';
 import Image from 'next/image';
 
 interface Props {
@@ -14,6 +14,9 @@ interface Props {
   equipoVisitante: Equipo;
   pronosticoInicial?: { golesLocal: number; golesVisitante: number };
   onGuardar: (golesLocal: number, golesVisitante: number) => void;
+  bloqueado?: boolean;
+  guardando?: boolean;
+  guardado?: boolean;
 }
 
 export default function InputMarcador({
@@ -22,6 +25,9 @@ export default function InputMarcador({
   equipoVisitante,
   pronosticoInicial,
   onGuardar,
+  bloqueado = false,
+  guardando = false,
+  guardado = false,
 }: Props) {
   const [golesLocal, setGolesLocal] = useState(pronosticoInicial?.golesLocal ?? 0);
   const [golesVisitante, setGolesVisitante] = useState(pronosticoInicial?.golesVisitante ?? 0);
@@ -29,10 +35,18 @@ export default function InputMarcador({
   const puntos = getPuntosPorFase(partido.fase);
 
   return (
-    <div className="bg-gray-900 border border-gray-800 rounded-xl p-4">
-      <div className="text-xs text-verde-400 font-semibold uppercase mb-3">
-        {partido.grupoId ? `Grupo ${partido.grupoId}` : partido.fase} ·{' '}
-        {formatearFecha(partido.fechaHoraUTC)} {formatearHora(partido.fechaHoraUTC)} (COL)
+    <div className={`bg-gray-900 border rounded-xl p-4 ${bloqueado ? 'border-gray-700 opacity-75' : 'border-gray-800'}`}>
+      <div className="flex items-center justify-between mb-3">
+        <div className="text-xs text-verde-400 font-semibold uppercase">
+          {partido.grupoId ? `Grupo ${partido.grupoId}` : partido.fase} ·{' '}
+          {formatearFecha(partido.fechaHoraUTC)} {formatearHora(partido.fechaHoraUTC)} (COL)
+        </div>
+        {bloqueado && (
+          <span className="flex items-center gap-1 text-xs text-gray-500 bg-gray-800 px-2 py-0.5 rounded-full">
+            <Lock className="w-3 h-3" />
+            {partido.estado === 'finalizado' ? 'Finalizado' : 'En curso'}
+          </span>
+        )}
       </div>
 
       <div className="flex items-center gap-3">
@@ -51,8 +65,9 @@ export default function InputMarcador({
             min={0}
             max={20}
             value={golesLocal}
+            disabled={bloqueado}
             onChange={(e) => setGolesLocal(Math.max(0, Math.min(20, parseInt(e.target.value) || 0)))}
-            className="w-12 h-10 text-center text-lg font-bold bg-gray-800 border border-gray-700 rounded-lg text-white focus:border-verde-500 focus:outline-none"
+            className="w-12 h-10 text-center text-lg font-bold bg-gray-800 border border-gray-700 rounded-lg text-white focus:border-verde-500 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
           />
           <span className="text-gray-500 font-bold">-</span>
           <input
@@ -60,8 +75,9 @@ export default function InputMarcador({
             min={0}
             max={20}
             value={golesVisitante}
+            disabled={bloqueado}
             onChange={(e) => setGolesVisitante(Math.max(0, Math.min(20, parseInt(e.target.value) || 0)))}
-            className="w-12 h-10 text-center text-lg font-bold bg-gray-800 border border-gray-700 rounded-lg text-white focus:border-verde-500 focus:outline-none"
+            className="w-12 h-10 text-center text-lg font-bold bg-gray-800 border border-gray-700 rounded-lg text-white focus:border-verde-500 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
           />
         </div>
 
@@ -80,13 +96,33 @@ export default function InputMarcador({
           Puntos posibles: <span className="text-verde-400 font-bold">{puntos.resultado}</span> resultado /{' '}
           <span className="text-verde-400 font-bold">{puntos.exacto}</span> exacto
         </span>
-        <button
-          onClick={() => onGuardar(golesLocal, golesVisitante)}
-          className="flex items-center gap-1 bg-verde-600 hover:bg-verde-700 text-white text-xs font-medium px-3 py-1.5 rounded-lg transition-colors"
-        >
-          <Save className="w-3 h-3" />
-          Guardar
-        </button>
+        {!bloqueado && (
+          <button
+            onClick={() => onGuardar(golesLocal, golesVisitante)}
+            disabled={guardando || guardado}
+            className={`flex items-center gap-1 text-white text-xs font-medium px-3 py-1.5 rounded-lg transition-colors disabled:cursor-not-allowed ${
+              guardado
+                ? 'bg-green-600'
+                : guardando
+                ? 'bg-gray-600'
+                : 'bg-verde-600 hover:bg-verde-700'
+            }`}
+          >
+            {guardado ? (
+              <>
+                <Check className="w-3 h-3" />
+                Guardado
+              </>
+            ) : guardando ? (
+              'Guardando...'
+            ) : (
+              <>
+                <Save className="w-3 h-3" />
+                Guardar
+              </>
+            )}
+          </button>
+        )}
       </div>
     </div>
   );
