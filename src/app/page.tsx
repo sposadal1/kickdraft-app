@@ -80,15 +80,18 @@ export default function HomePage() {
 
       {/* Sistema de puntos */}
       <section className="py-20 px-4">
-        <div className="max-w-3xl mx-auto text-center">
+        <div className="max-w-5xl mx-auto text-center">
           <h2 className="text-3xl font-bold mb-4">Sistema de puntuación</h2>
           <p className="text-gray-400 mb-10">Los puntos aumentan según la importancia del partido.</p>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-4">
             {[
-              { fase: 'Grupos', resultado: 1, exacto: 2 },
-              { fase: 'Octavos', resultado: 3, exacto: 6 },
-              { fase: 'Cuartos', resultado: 4, exacto: 8 },
-              { fase: 'Final', resultado: 7, exacto: 14 },
+              { fase: 'Grupos',           resultado: 1, exacto: 2  },
+              { fase: 'Dieciseisavos',    resultado: 2, exacto: 3  },
+              { fase: 'Octavos',          resultado: 3, exacto: 6  },
+              { fase: 'Cuartos',          resultado: 4, exacto: 8  },
+              { fase: 'Semifinal',        resultado: 5, exacto: 10 },
+              { fase: '3er y 4to puesto', resultado: 6, exacto: 12 },
+              { fase: 'Final',            resultado: 7, exacto: 14 },
             ].map((item) => (
               <div key={item.fase} className="bg-gray-900 border border-gray-800 rounded-xl p-4">
                 <div className="text-verde-400 font-bold text-sm mb-2">{item.fase}</div>
