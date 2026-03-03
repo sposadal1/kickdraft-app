@@ -18,9 +18,13 @@ export default function CrearLigaPage() {
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
-      setUsuario(data.user ?? null);
+      if (!data.user) {
+        router.replace('/auth/login');
+        return;
+      }
+      setUsuario(data.user);
     });
-  }, []);
+  }, [router]);
 
   async function handleCrear(e: React.FormEvent) {
     e.preventDefault();
@@ -114,7 +118,7 @@ export default function CrearLigaPage() {
             type="text"
             value={nombre}
             onChange={(e) => setNombre(e.target.value)}
-            placeholder="Ej: Los crack del trabajo"
+            placeholder="Ej: Los cracks del trabajo"
             maxLength={50}
             required
             className="w-full bg-gray-900 border border-gray-700 text-white placeholder-gray-500 rounded-xl px-4 py-3 focus:border-verde-500 focus:outline-none transition-colors"
