@@ -33,6 +33,11 @@ export default function InputMarcador({
   const [golesVisitante, setGolesVisitante] = useState(pronosticoInicial?.golesVisitante ?? 0);
 
   const esPrimerRender = useRef(true);
+  const onGuardarRef = useRef(onGuardar);
+
+  useEffect(() => {
+    onGuardarRef.current = onGuardar;
+  }, [onGuardar]);
 
   useEffect(() => {
     if (esPrimerRender.current) {
@@ -42,11 +47,11 @@ export default function InputMarcador({
     if (bloqueado) return;
 
     const timer = setTimeout(() => {
-      onGuardar(golesLocal, golesVisitante);
+      onGuardarRef.current(golesLocal, golesVisitante);
     }, 900);
 
     return () => clearTimeout(timer);
-  }, [golesLocal, golesVisitante, bloqueado, onGuardar]);
+  }, [golesLocal, golesVisitante, bloqueado]);
 
   const puntos = getPuntosPorFase(partido.fase);
 
@@ -82,7 +87,7 @@ export default function InputMarcador({
             max={20}
             value={golesLocal}
             disabled={bloqueado}
-            onChange={(e) => setGolesLocal(Math.max(0, Math.min(20, parseInt(e.target.value) || 0)))}
+            onChange={(e) => setGolesLocal(Math.max(0, Math.min(20, parseInt(e.target.value) || 0))) }
             className="w-12 h-10 text-center text-lg font-bold bg-gray-800 border border-gray-700 rounded-lg text-white focus:border-verde-500 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
           />
           <span className="text-gray-500 font-bold">-</span>
@@ -92,7 +97,7 @@ export default function InputMarcador({
             max={20}
             value={golesVisitante}
             disabled={bloqueado}
-            onChange={(e) => setGolesVisitante(Math.max(0, Math.min(20, parseInt(e.target.value) || 0)))}
+            onChange={(e) => setGolesVisitante(Math.max(0, Math.min(20, parseInt(e.target.value) || 0))) }
             className="w-12 h-10 text-center text-lg font-bold bg-gray-800 border border-gray-700 rounded-lg text-white focus:border-verde-500 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
           />
         </div>
