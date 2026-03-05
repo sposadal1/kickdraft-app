@@ -5,6 +5,7 @@ export interface Pronostico {
   golesLocalPronosticado: number;
   golesVisitantePronosticado: number;
   puntosObtenidos: number;
+  puntosParciales: number;
   creadoEn: string;
   actualizadoEn: string;
 }

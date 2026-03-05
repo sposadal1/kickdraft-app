@@ -48,10 +48,27 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=tu-anon-key
 
 1. Crea un proyecto en [supabase.com](https://supabase.com)
 2. Ve a **SQL Editor** y ejecuta el contenido de `supabase/schema.sql`
-3. Activa la autenticación por Google en **Authentication > Providers**
-4. Copia la URL y la anon key del proyecto
+3. Ejecuta también la migración de funcionalidades en vivo: `supabase/migrations/001_live_features.sql`
+4. Activa la autenticación por Google en **Authentication > Providers**
+5. Copia la URL y la anon key del proyecto
 
-### 5. Correr el proyecto
+### 5. Configurar API-Football (para datos en tiempo real)
+
+La clave de la API debe agregarse como secret en Supabase (NO en el código ni en Vercel):
+
+```bash
+supabase secrets set API_FOOTBALL_KEY=your_api_football_key_here
+```
+
+### 6. Deployar Edge Function (cron job de sincronización)
+
+```bash
+supabase functions deploy sync-live-scores
+```
+
+La función se ejecuta automáticamente cada minuto y sincroniza resultados en vivo desde API-Football.
+
+### 7. Correr el proyecto
 
 ```bash
 npm run dev
@@ -73,13 +90,16 @@ kickdraft-app/
 │   │   └── auth/               # Login y registro
 │   ├── components/             # Componentes reutilizables
 │   │   ├── layout/             # Navbar
-│   │   ├── partidos/           # TarjetaPartido, TablaGrupo
+│   │   ├── partidos/           # TarjetaPartido, TablaGrupo, EstadisticasEnVivo
 │   │   ├── pronosticos/        # InputMarcador
 │   │   └── ligas/              # TarjetaLiga, TablaClasificacion
 │   ├── data/                   # Datos estáticos
 │   │   ├── equipos.ts          # 48 equipos del Mundial 2026
 │   │   ├── estadios.ts         # 16 estadios sede
 │   │   └── partidos.ts         # Partidos fase de grupos
+│   ├── hooks/                  # React hooks
+│   │   ├── usePartidoEnVivo.ts # Datos en tiempo real de un partido
+│   │   └── useRankingEnVivo.ts # Ranking en tiempo real de una liga
 │   ├── lib/                    # Lógica de negocio
 │   │   ├── puntuacion.ts       # Sistema de puntos
 │   │   ├── grupos.ts           # Tabla de posiciones
@@ -87,12 +107,16 @@ kickdraft-app/
 │   │   └── supabase.ts         # Cliente de Supabase
 │   └── types/                  # Tipos TypeScript
 │       ├── equipo.ts
-│       ├── partido.ts
-│       ├── pronostico.ts
+│       ├── partido.ts          # Incluye EstadisticasPartido y EventoPartido
+│       ├── pronostico.ts       # Incluye puntosParciales
 │       ├── liga.ts
 │       └── usuario.ts
 ├── supabase/
-│   └── schema.sql              # Esquema de base de datos
+│   ├── schema.sql              # Esquema base de datos
+│   ├── migrations/
+│   │   └── 001_live_features.sql  # Tablas para funcionalidades en vivo
+│   └── functions/
+│       └── sync-live-scores/   # Edge Function cron (cada minuto)
 ├── .env.local.example
 └── README.md
 ```
