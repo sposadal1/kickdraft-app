@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { User } from '@supabase/supabase-js';
-import { Trophy, Copy, Check, Users, ArrowLeft } from 'lucide-react';
+import { Trophy, Copy, Check, Users, ArrowLeft, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 
 interface Miembro {
@@ -34,6 +34,8 @@ export default function DetalleLigaPage() {
   const [usuario, setUsuario] = useState<User | null>(null);
   const [cargando, setCargando] = useState(true);
   const [copiado, setCopiado] = useState(false);
+  const [mostrarConfirmEliminar, setMostrarConfirmEliminar] = useState(false);
+  const [eliminando, setEliminando] = useState(false);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data, error }) => {
@@ -91,6 +93,13 @@ export default function DetalleLigaPage() {
     setTimeout(() => setCopiado(false), 2000);
   }
 
+  async function eliminarLiga() {
+    if (!liga) return;
+    setEliminando(true);
+    await supabase.from('ligas').delete().eq('id', liga.id);
+    router.replace('/ligas');
+  }
+
   if (cargando) {
     return (
       <div className="flex items-center justify-center py-20">
@@ -100,6 +109,8 @@ export default function DetalleLigaPage() {
   }
 
   if (!liga) return null;
+
+  const esCreador = usuario?.id === liga.creador_id;
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-8">
@@ -114,13 +125,22 @@ export default function DetalleLigaPage() {
         <div className="w-16 h-16 rounded-full bg-verde-700 flex items-center justify-center text-white font-black text-2xl">
           {liga.nombre.charAt(0).toUpperCase()}
         </div>
-        <div>
+        <div className="flex-1">
           <h1 className="text-3xl font-bold text-white">{liga.nombre}</h1>
           <div className="flex items-center gap-2 mt-1 text-gray-400 text-sm">
             <Users className="w-4 h-4" />
             {miembros.length} miembro{miembros.length !== 1 ? 's' : ''}
           </div>
         </div>
+        {esCreador && (
+          <button
+            onClick={() => setMostrarConfirmEliminar(true)}
+            className="flex items-center gap-2 bg-red-900/30 hover:bg-red-900/60 text-red-400 hover:text-red-300 text-sm font-medium px-3 py-2 rounded-lg border border-red-900/50 transition-colors"
+          >
+            <Trash2 className="w-4 h-4" />
+            Eliminar liga
+          </button>
+        )}
       </div>
 
       {/* Código de invitación */}
@@ -149,31 +169,59 @@ export default function DetalleLigaPage() {
           </div>
         ) : (
           <div className="space-y-3">
-            {miembros.map((miembro, index) => {
+            {miembros.map((miembro, idx) => {
+              const perfil = miembro.perfiles;
+              const nombre = perfil ? `${perfil.nombre} ${perfil.apellido}`.trim() || perfil.email : 'Usuario';
               const esYo = miembro.usuario_id === usuario?.id;
-              const nombreMostrado = miembro.perfiles
-                ? `${miembro.perfiles.nombre} ${miembro.perfiles.apellido}`.trim() || miembro.perfiles.email
-                : 'Usuario';
               return (
                 <div
                   key={miembro.usuario_id}
-                  className={`flex items-center gap-4 p-3 rounded-xl ${esYo ? 'bg-verde-900/30 border border-verde-800/50' : 'bg-gray-800/50'}`}
+                  className={`flex items-center gap-3 p-3 rounded-xl ${esYo ? 'bg-verde-900/30 border border-verde-800/50' : 'bg-gray-800/50'}`}
                 >
-                  <span className="text-gray-500 font-bold w-6 text-center">{index + 1}</span>
-                  <div className="flex-1">
-                    <p className="text-white font-medium">
-                      {nombreMostrado}
-                      {esYo && <span className="ml-2 text-xs text-verde-400">(Tú)</span>}
-                    </p>
+                  <span className="text-gray-500 font-bold text-sm w-5 text-center">{idx + 1}</span>
+                  <div className="w-8 h-8 rounded-full bg-verde-700 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
+                    {nombre.charAt(0).toUpperCase()}
                   </div>
-                  <p className="text-verde-400 font-bold">{miembro.total_puntos} pts</p>
+                  <span className={`flex-1 font-medium text-sm ${esYo ? 'text-verde-400' : 'text-white'}`}>{nombre}{esYo && <span className="ml-1 text-xs text-gray-500">(tú)</span>}</span>
+                  <span className="font-bold text-verde-400">{miembro.total_puntos} pts</span>
                 </div>
               );
             })}
           </div>
         )}
       </div>
+
+      {/* Modal de confirmación de eliminación */}
+      {mostrarConfirmEliminar && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+          <div className="bg-gray-900 border border-gray-700 rounded-2xl p-6 max-w-sm w-full shadow-xl">
+            <div className="flex items-center justify-center w-12 h-12 bg-red-900/30 rounded-xl mb-4 mx-auto">
+              <Trash2 className="w-6 h-6 text-red-400" />
+            </div>
+            <h2 className="text-xl font-bold text-white text-center mb-2">Eliminar liga</h2>
+            <p className="text-gray-400 text-center text-sm mb-6">¿Estás seguro de que quieres eliminar{' '}
+              <span className="text-white font-semibold">'{liga.nombre}'</span>?
+              Esta acción no se puede deshacer.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setMostrarConfirmEliminar(false)}
+                disabled={eliminando}
+                className="flex-1 bg-gray-800 hover:bg-gray-700 text-white font-medium py-2.5 rounded-xl transition-colors disabled:opacity-50"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={eliminarLiga}
+                disabled={eliminando}
+                className="flex-1 bg-red-600 hover:bg-red-700 text-white font-medium py-2.5 rounded-xl transition-colors disabled:opacity-50"
+              >
+                {eliminando ? 'Eliminando...' : 'Eliminar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
-
