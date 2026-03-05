@@ -34,10 +34,23 @@ export default function InputMarcador({
 
   const esPrimerRender = useRef(true);
   const onGuardarRef = useRef(onGuardar);
+  // Track whether we have already synced the initial data from Supabase
+  const iniciado = useRef(false);
 
   useEffect(() => {
     onGuardarRef.current = onGuardar;
   }, [onGuardar]);
+
+  // Sync state when pronosticoInicial arrives from Supabase for the first time
+  useEffect(() => {
+    if (pronosticoInicial !== undefined && !iniciado.current) {
+      iniciado.current = true;
+      setGolesLocal(pronosticoInicial.golesLocal);
+      setGolesVisitante(pronosticoInicial.golesVisitante);
+      // Also reset esPrimerRender so the sync above doesn't trigger a save
+      esPrimerRender.current = true;
+    }
+  }, [pronosticoInicial]);
 
   useEffect(() => {
     if (esPrimerRender.current) {
@@ -56,7 +69,7 @@ export default function InputMarcador({
   const puntos = getPuntosPorFase(partido.fase);
 
   return (
-    <div className={`bg-gray-900 border rounded-xl p-4 ${bloqueado ? 'border-gray-700 opacity-75' : 'border-gray-800'}`}>
+    <div className={`bg-gray-900 border rounded-xl p-4 ${bloqueado ? 'border-gray-700 opacity-75' : 'border-gray-800'}`}>  
       <div className="flex items-center justify-between mb-3">
         <div className="text-xs text-verde-400 font-semibold uppercase">
           {partido.grupoId ? `Grupo ${partido.grupoId}` : partido.fase} ·{' '}
@@ -97,7 +110,7 @@ export default function InputMarcador({
             max={20}
             value={golesVisitante}
             disabled={bloqueado}
-            onChange={(e) => setGolesVisitante(Math.max(0, Math.min(20, parseInt(e.target.value) || 0))) }
+            onChange={(e) => setGolesVisitante(Math.max(0, Math.min(20, parseInt(e.target.value) || 0)))}
             className="w-12 h-10 text-center text-lg font-bold bg-gray-800 border border-gray-700 rounded-lg text-white focus:border-verde-500 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
           />
         </div>
