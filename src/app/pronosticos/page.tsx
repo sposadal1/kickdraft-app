@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { PARTIDOS } from '@/data/partidos';
 import { EQUIPOS } from '@/data/equipos';
 import InputMarcador from '@/components/pronosticos/InputMarcador';
@@ -23,6 +23,9 @@ export default function PronosticosPage() {
   const [guardado, setGuardado] = useState<Record<number, boolean>>({});
   const [errorGuardando, setErrorGuardando] = useState<Record<number, boolean>>({});
 
+  // Keep a ref so guardarPronostico always sees the latest user
+  const usuarioRef = useRef<User | null | undefined>(undefined);
+
   const ahora = new Date();
   const partidosFiltrados = PARTIDOS.filter((p) => p.fase === faseActiva);
 
@@ -32,17 +35,21 @@ export default function PronosticosPage() {
     supabase.auth.getUser().then(({ data, error }) => {
       if (!error && data.user) {
         setUsuario(data.user);
+        usuarioRef.current = data.user;
         cargarPronosticos(data.user);
       } else {
         setUsuario(null);
+        usuarioRef.current = null;
       }
     });
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session?.user) {
         setUsuario(session.user);
+        usuarioRef.current = session.user;
         cargarPronosticos(session.user);
       } else {
         setUsuario(null);
+        usuarioRef.current = null;
       }
     });
     return () => listener.subscription.unsubscribe();
@@ -67,15 +74,16 @@ export default function PronosticosPage() {
     }
   }
 
-  async function guardarPronostico(partidoId: number, golesLocal: number, golesVisitante: number) {
-    if (!usuario) return;
+  const guardarPronostico = useCallback(async (partidoId: number, golesLocal: number, golesVisitante: number) => {
+    const user = usuarioRef.current;
+    if (!user) return;
 
     setGuardando((prev) => ({ ...prev, [partidoId]: true }));
     setErrorGuardando((prev) => ({ ...prev, [partidoId]: false }));
 
     const { error } = await supabase.from('pronosticos').upsert(
       {
-        usuario_id: usuario.id,
+        usuario_id: user.id,
         partido_id: partidoId,
         goles_local_pronosticado: golesLocal,
         goles_visitante_pronosticado: golesVisitante,
@@ -86,6 +94,7 @@ export default function PronosticosPage() {
     setGuardando((prev) => ({ ...prev, [partidoId]: false }));
 
     if (error) {
+      console.error('Error guardando pronóstico:', error.message);
       setErrorGuardando((prev) => ({ ...prev, [partidoId]: true }));
       return;
     }
@@ -98,7 +107,7 @@ export default function PronosticosPage() {
     setTimeout(() => {
       setGuardado((prev) => ({ ...prev, [partidoId]: false }));
     }, 2000);
-  }
+  }, []);
 
   if (usuario === undefined) {
     return (
@@ -193,4 +202,3 @@ export default function PronosticosPage() {
     </div>
   );
 }
-
