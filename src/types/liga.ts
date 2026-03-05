@@ -12,4 +12,5 @@ export interface MiembroLiga {
   usuarioId: string;
   totalPuntos: number;
   unidoEn: string;
+  updatedAt?: string;
 }

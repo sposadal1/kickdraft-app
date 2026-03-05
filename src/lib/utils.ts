@@ -21,11 +21,11 @@ export function formatearHora(fechaUTC: string): string {
 
 export function generarCodigoInvitacion(): string {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-  let codigo = '';
-  for (let i = 0; i < 8; i++) {
-    codigo += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return codigo;
+  const array = new Uint32Array(8);
+  crypto.getRandomValues(array);
+  return Array.from(array)
+    .map((val) => chars[val % chars.length])
+    .join('');
 }
 
 export function obtenerNombreFase(fase: FasePartido): string {
