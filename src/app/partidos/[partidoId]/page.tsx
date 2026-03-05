@@ -1,9 +1,16 @@
 import { notFound } from 'next/navigation';
 import { PARTIDOS } from '@/data/partidos';
 import { EQUIPOS } from '@/data/equipos';
+import { PROBABILIDADES } from '@/data/probabilidades';
+import { HISTORIAL } from '@/data/historial';
+import { ALINEACIONES } from '@/data/alineaciones';
 import { calcularTablaGrupo } from '@/lib/grupos';
 import { formatearFecha, formatearHora } from '@/lib/utils';
 import TablaGrupo from '@/components/partidos/TablaGrupo';
+import SeccionProbabilidades from '@/components/partidos/SeccionProbabilidades';
+import SeccionEstadisticas from '@/components/partidos/SeccionEstadisticas';
+import SeccionAlineaciones from '@/components/partidos/SeccionAlineaciones';
+import SeccionHistorial from '@/components/partidos/SeccionHistorial';
 import { MapPin, Clock } from 'lucide-react';
 import Image from 'next/image';
 
@@ -23,6 +30,20 @@ export default async function DetallePartidoPage({ params }: Props) {
   const tablaGrupo = partido.grupoId
     ? calcularTablaGrupo(partido.grupoId, PARTIDOS, EQUIPOS)
     : null;
+
+  const probabilidades = PROBABILIDADES.find((p) => p.partidoId === partido.id);
+  const historialRaw = HISTORIAL.find(
+    (h) =>
+      (h.equipoLocalId === partido.equipoLocalId && h.equipoVisitanteId === partido.equipoVisitanteId) ||
+      (h.equipoLocalId === partido.equipoVisitanteId && h.equipoVisitanteId === partido.equipoLocalId)
+  );
+  const historialInvertido = historialRaw
+    ? historialRaw.equipoLocalId === partido.equipoVisitanteId
+    : false;
+  const historialNombreLocal = historialInvertido ? equipoVisitante.nombreCorto : equipoLocal.nombreCorto;
+  const historialNombreVisitante = historialInvertido ? equipoLocal.nombreCorto : equipoVisitante.nombreCorto;
+  const alineacionLocal = ALINEACIONES.find((a) => a.equipoId === partido.equipoLocalId);
+  const alineacionVisitante = ALINEACIONES.find((a) => a.equipoId === partido.equipoVisitanteId);
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-8">
@@ -93,17 +114,37 @@ export default async function DetallePartidoPage({ params }: Props) {
         </div>
       )}
 
+      {/* Probabilidades */}
+      {probabilidades && (
+        <SeccionProbabilidades
+          probabilidades={probabilidades}
+          nombreLocal={equipoLocal.nombreCorto}
+          nombreVisitante={equipoVisitante.nombreCorto}
+        />
+      )}
+
+      {/* Estadísticas */}
+      <SeccionEstadisticas
+        estado={partido.estado}
+        nombreLocal={equipoLocal.nombreCorto}
+        nombreVisitante={equipoVisitante.nombreCorto}
+      />
+
       {/* Alineaciones */}
       <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6 mb-6">
-        <h3 className="text-lg font-bold text-white mb-3">Alineaciones</h3>
-        <p className="text-gray-500 text-sm">Disponible próximamente</p>
+        <h3 className="text-lg font-bold text-white mb-4">Alineaciones probables</h3>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+          <SeccionAlineaciones alineacion={alineacionLocal} nombreEquipo={equipoLocal.nombre} />
+          <SeccionAlineaciones alineacion={alineacionVisitante} nombreEquipo={equipoVisitante.nombre} />
+        </div>
       </div>
 
       {/* Historial */}
-      <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6">
-        <h3 className="text-lg font-bold text-white mb-3">Historial entre selecciones</h3>
-        <p className="text-gray-500 text-sm">Disponible próximamente</p>
-      </div>
+      <SeccionHistorial
+        historial={historialRaw}
+        nombreLocal={historialNombreLocal}
+        nombreVisitante={historialNombreVisitante}
+      />
     </div>
   );
 }
