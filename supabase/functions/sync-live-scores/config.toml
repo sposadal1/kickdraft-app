@@ -1,0 +1,3 @@
+[functions.sync-live-scores]
+verify_jwt = false
+schedule = "*/1 * * * *"
