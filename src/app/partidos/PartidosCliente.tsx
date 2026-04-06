@@ -9,7 +9,7 @@ import { FasePartido } from '@/types/partido';
 
 const FASES: { valor: FasePartido | 'todos'; label: string }[] = [
   { valor: 'todos', label: 'Todos' },
-  { valor: 'grupos', label: 'Solo grupos' },
+  { valor: 'grupos', label: 'Grupos' },
   { valor: 'dieciseisavos', label: 'Dieciseisavos' },
   { valor: 'octavos', label: 'Octavos' },
   { valor: 'cuartos', label: 'Cuartos' },

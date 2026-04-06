@@ -24,7 +24,11 @@ export default function LoginPage() {
     setError('');
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) {
-      setError('Email o contraseña incorrectos. Verifica tus datos o usa el enlace mágico.');
+      if (error.message.toLowerCase().includes('invalid') || error.message.toLowerCase().includes('credentials')) {
+        setError('Email o contraseña incorrectos. ¿Olvidaste tu contraseña? Usa el enlace mágico.');
+      } else {
+        setError('No se pudo iniciar sesión. Intenta de nuevo o usa el enlace mágico.');
+      }
     } else {
       router.push('/');
       router.refresh();

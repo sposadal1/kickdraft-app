@@ -34,11 +34,17 @@ export function useRankingEnVivo(ligaId: string) {
       perfiles: { nombre: string; apellido: string; email: string } | null;
     }
 
+    interface PartidoResumen {
+      fase: string;
+      goles_local: number | null;
+      goles_visitante: number | null;
+    }
+
     interface PronosticoRow {
       puntos_parciales: number | null;
       goles_local: number | null;
       goles_visitante: number | null;
-      partidos: { fase: string; goles_local: number | null; goles_visitante: number | null } | { fase: string; goles_local: number | null; goles_visitante: number | null }[] | null;
+      partidos: PartidoResumen | PartidoResumen[] | null;
     }
 
     const rankingConParciales = await Promise.all(
