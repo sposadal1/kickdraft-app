@@ -12,6 +12,17 @@ const PUNTOS_POR_FASE: Record<FasePartido, { resultado: number; exacto: number }
   final:         { resultado: 7, exacto: 14 },
 };
 
+// Peso por fase para criterio de desempate #4 (mayor = más importante)
+export const PESO_FASE: Record<FasePartido, number> = {
+  grupos:        1,
+  dieciseisavos: 2,
+  octavos:       3,
+  cuartos:       4,
+  semifinal:     5,
+  tercer_cuarto: 6,
+  final:         7,
+};
+
 export function calcularPuntos(
   fase: FasePartido,
   golesLocalPron: number,
@@ -39,4 +50,26 @@ export function calcularPuntos(
 
 export function getPuntosPorFase(fase: FasePartido) {
   return PUNTOS_POR_FASE[fase];
+}
+
+export interface DatosDesempate {
+  totalPuntos: number;
+  exactos: number;
+  marcadoresAcertados: number;
+  pesoFasePonderado: number;
+}
+
+/**
+ * Compara dos entradas de ranking usando los criterios de desempate en orden:
+ * 1. Puntos totales
+ * 2. Cantidad de resultados exactos
+ * 3. Cantidad de marcadores acertados sin exactitud
+ * 4. Puntaje ponderado por fase
+ * Retorna negativo si a > b, positivo si b > a, 0 si iguales.
+ */
+export function compararDesempate(a: DatosDesempate, b: DatosDesempate): number {
+  if (b.totalPuntos !== a.totalPuntos) return b.totalPuntos - a.totalPuntos;
+  if (b.exactos !== a.exactos) return b.exactos - a.exactos;
+  if (b.marcadoresAcertados !== a.marcadoresAcertados) return b.marcadoresAcertados - a.marcadoresAcertados;
+  return b.pesoFasePonderado - a.pesoFasePonderado;
 }

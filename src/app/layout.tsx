@@ -1,7 +1,9 @@
 import type { Metadata } from 'next';
+import Script from 'next/script';
 import './globals.css';
 import Navbar from '@/components/layout/Navbar';
 import ErrorBoundary from '@/components/layout/ErrorBoundary';
+import AdSenseBanner from '@/components/layout/AdSenseBanner';
 
 export const metadata: Metadata = {
   title: 'Kickdraft - Pollas Mundialistas Mundial 2026',
@@ -32,6 +34,8 @@ export const metadata: Metadata = {
   },
 };
 
+const ADSENSE_PUBLISHER_ID = process.env.NEXT_PUBLIC_ADSENSE_PUBLISHER_ID;
+
 export default function RootLayout({
   children,
 }: {
@@ -39,11 +43,32 @@ export default function RootLayout({
 }) {
   return (
     <html lang="es">
-      <body className="font-sans bg-black min-h-screen">
+      <head>
+        {ADSENSE_PUBLISHER_ID && (
+          <Script
+            async
+            src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${ADSENSE_PUBLISHER_ID}`}
+            crossOrigin="anonymous"
+            strategy="lazyOnload"
+          />
+        )}
+      </head>
+      <body className="font-sans bg-black min-h-screen flex flex-col">
         <Navbar />
         <ErrorBoundary>
-          <main>{children}</main>
+          <main className="flex-1">{children}</main>
         </ErrorBoundary>
+        {/* Footer con anuncio pequeño no invasivo */}
+        <footer className="border-t border-gray-900 py-4 px-4">
+          <AdSenseBanner
+            adSlot={process.env.NEXT_PUBLIC_ADSENSE_FOOTER_SLOT ?? ''}
+            adFormat="horizontal"
+            className="max-w-5xl mx-auto"
+          />
+          <p className="text-center text-xs text-gray-700 mt-3">
+            © {new Date().getFullYear()} Kickdraft · Mundial 2026
+          </p>
+        </footer>
       </body>
     </html>
   );

@@ -99,7 +99,7 @@ export function usePartidoEnVivo(partidoId: number) {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'estadisticas_partido', filter: `partido_id=eq.${partidoId}` },
         (payload) => {
-          const s = payload.new as any;
+          const s = payload.new as Record<string, number>;
           setData((prev) => prev ? {
             ...prev,
             estadisticas: {

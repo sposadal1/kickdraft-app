@@ -10,6 +10,8 @@ import Link from 'next/link';
 interface Miembro {
   usuario_id: string;
   total_puntos: number;
+  exactos?: number;
+  marcadores_acertados?: number;
   perfiles: {
     nombre: string;
     apellido: string;
@@ -78,11 +80,16 @@ export default function DetalleLigaPage() {
 
     const { data: miembrosData } = await supabase
       .from('miembros_liga')
-      .select('usuario_id, total_puntos, perfiles(nombre, apellido, email)')
+      .select('usuario_id, total_puntos, exactos, marcadores_acertados, perfiles(nombre, apellido, email)')
       .eq('liga_id', ligaId)
       .order('total_puntos', { ascending: false });
 
-    setMiembros((miembrosData as unknown as Miembro[]) ?? []);
+    const miembrosOrdenados = ((miembrosData as unknown as Miembro[]) ?? []).sort((a, b) => {
+      if (b.total_puntos !== a.total_puntos) return b.total_puntos - a.total_puntos;
+      if ((b.exactos ?? 0) !== (a.exactos ?? 0)) return (b.exactos ?? 0) - (a.exactos ?? 0);
+      return (b.marcadores_acertados ?? 0) - (a.marcadores_acertados ?? 0);
+    });
+    setMiembros(miembrosOrdenados);
     setCargando(false);
   }
 
@@ -160,7 +167,8 @@ export default function DetalleLigaPage() {
 
       {/* Clasificación */}
       <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6">
-        <h2 className="text-xl font-bold text-white mb-4">Clasificación</h2>
+        <h2 className="text-xl font-bold text-white mb-1">Clasificación</h2>
+        <p className="text-xs text-gray-500 mb-4">Desempate: exactos → marcadores → peso por fase</p>
         {miembros.length === 0 ? (
           <div className="text-center py-8 text-gray-500">
             <Users className="w-10 h-10 mx-auto mb-3 opacity-30" />
@@ -182,7 +190,21 @@ export default function DetalleLigaPage() {
                   <div className="w-8 h-8 rounded-full bg-verde-700 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
                     {nombre.charAt(0).toUpperCase()}
                   </div>
-                  <span className={`flex-1 font-medium text-sm ${esYo ? 'text-verde-400' : 'text-white'}`}>{nombre}{esYo && <span className="ml-1 text-xs text-gray-500">(tú)</span>}</span>
+                  <div className="flex-1 min-w-0">
+                    <span className={`font-medium text-sm ${esYo ? 'text-verde-400' : 'text-white'}`}>
+                      {nombre}{esYo && <span className="ml-1 text-xs text-gray-500">(tú)</span>}
+                    </span>
+                    {(miembro.exactos != null || miembro.marcadores_acertados != null) && (
+                      <div className="flex gap-2 mt-0.5">
+                        {miembro.exactos != null && (
+                          <span className="text-xs text-green-400">{miembro.exactos} exactos</span>
+                        )}
+                        {miembro.marcadores_acertados != null && (
+                          <span className="text-xs text-yellow-400">{miembro.marcadores_acertados} marcadores</span>
+                        )}
+                      </div>
+                    )}
+                  </div>
                   <span className="font-bold text-verde-400">{miembro.total_puntos} pts</span>
                 </div>
               );
@@ -200,7 +222,7 @@ export default function DetalleLigaPage() {
             </div>
             <h2 className="text-xl font-bold text-white text-center mb-2">Eliminar liga</h2>
             <p className="text-gray-400 text-center text-sm mb-6">¿Estás seguro de que quieres eliminar{' '}
-              <span className="text-white font-semibold">'{liga.nombre}'</span>?
+              <span className="text-white font-semibold">&lsquo;{liga.nombre}&rsquo;</span>?
               Esta acción no se puede deshacer.
             </p>
             <div className="flex gap-3">
