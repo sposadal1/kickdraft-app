@@ -2,13 +2,28 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Plus, Hash, Trophy, LogIn } from 'lucide-react';
+import { Plus, Hash, Trophy, LogIn, Globe } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { User } from '@supabase/supabase-js';
 
+interface LigaInfo {
+  id: string;
+  nombre: string;
+  codigo_invitacion: string;
+  creador_id: string;
+  es_global?: boolean;
+}
+
+interface MiembroConLiga {
+  liga_id: string;
+  total_puntos: number;
+  ligas: LigaInfo | LigaInfo[] | null;
+}
+
 export default function LigasPage() {
   const [usuario, setUsuario] = useState<User | null | undefined>(undefined);
-  const [misLigas, setMisLigas] = useState<any[]>([]);
+  const [misLigas, setMisLigas] = useState<MiembroConLiga[]>([]);
+  const [ligaMundial, setLigaMundial] = useState<LigaInfo | null>(null);
   const [cargando, setCargando] = useState(false);
   const [mostrarUnirse, setMostrarUnirse] = useState(false);
   const [codigoInvitacion, setCodigoInvitacion] = useState('');
@@ -39,9 +54,24 @@ export default function LigasPage() {
     setCargando(true);
     const { data } = await supabase
       .from('miembros_liga')
-      .select('liga_id, total_puntos, ligas(id, nombre, codigo_invitacion, creador_id)')
+      .select('liga_id, total_puntos, ligas(id, nombre, codigo_invitacion, creador_id, es_global)')
       .eq('usuario_id', user.id);
-    setMisLigas(data ?? []);
+
+    const todas = (data ?? []) as MiembroConLiga[];
+    const global = todas.find((m) => {
+      const liga = Array.isArray(m.ligas) ? m.ligas[0] : m.ligas;
+      return liga?.es_global === true;
+    });
+    const privadas = todas.filter((m) => {
+      const liga = Array.isArray(m.ligas) ? m.ligas[0] : m.ligas;
+      return !liga?.es_global;
+    });
+
+    if (global) {
+      const liga = Array.isArray(global.ligas) ? global.ligas[0] : global.ligas;
+      if (liga) setLigaMundial(liga);
+    }
+    setMisLigas(privadas);
     setCargando(false);
   }
 
@@ -161,6 +191,29 @@ export default function LigasPage() {
         </div>
       )}
 
+      {/* Liga Mundial (global) */}
+      {ligaMundial && (
+        <Link
+          href={`/ligas/${ligaMundial.id}`}
+          className="block bg-gradient-to-r from-verde-900/60 to-gray-900 border border-verde-700 hover:border-verde-500 rounded-xl p-4 mb-6 transition-colors"
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-verde-600 flex items-center justify-center">
+                <Globe className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <h3 className="text-white font-bold">Liga Mundial 🌍</h3>
+                <p className="text-verde-400 text-xs mt-0.5">Liga global · Todos los usuarios</p>
+              </div>
+            </div>
+            <div className="text-right">
+              <p className="text-xs text-gray-500">Compites automáticamente</p>
+            </div>
+          </div>
+        </Link>
+      )}
+
       {/* Lista de ligas */}
       {cargando ? (
         <div className="text-center py-16 text-gray-500">
@@ -169,13 +222,13 @@ export default function LigasPage() {
       ) : misLigas.length === 0 ? (
         <div className="text-center py-16 text-gray-500">
           <Trophy className="w-12 h-12 mx-auto mb-4 opacity-30" />
-          <p className="text-lg font-medium mb-2">Aún no tienes ligas</p>
+          <p className="text-lg font-medium mb-2">Aún no tienes ligas privadas</p>
           <p className="text-sm">Crea tu primera liga o únete con un código de invitación.</p>
         </div>
       ) : (
         <div className="space-y-4">
           {misLigas.map((miembro) => {
-            const liga = miembro.ligas as { id: string; nombre: string; codigo_invitacion: string; creador_id: string } | null;
+            const liga = (Array.isArray(miembro.ligas) ? miembro.ligas[0] : miembro.ligas) as LigaInfo | null;
             if (!liga) return null;
             return (
               <Link

@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Trophy, Users, Star, ChevronRight } from 'lucide-react';
+import { Trophy, Users, Star, ChevronRight, Globe } from 'lucide-react';
 
 export default function HomePage() {
   return (
@@ -33,6 +33,27 @@ export default function HomePage() {
               className="flex items-center justify-center gap-2 bg-gray-800 hover:bg-gray-700 text-white font-bold px-8 py-4 rounded-xl text-lg transition-colors border border-gray-700"
             >
               Unirme a una liga
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* Liga Mundial banner */}
+      <section className="px-4 pb-4">
+        <div className="max-w-4xl mx-auto">
+          <div className="bg-gradient-to-r from-verde-900/50 to-gray-900 border border-verde-700 rounded-2xl p-5 flex flex-col sm:flex-row items-center gap-4">
+            <div className="flex items-center justify-center w-12 h-12 bg-verde-600 rounded-xl flex-shrink-0">
+              <Globe className="w-6 h-6 text-white" />
+            </div>
+            <div className="flex-1 text-center sm:text-left">
+              <h3 className="text-white font-bold text-lg">Liga Mundial 🌍</h3>
+              <p className="text-gray-400 text-sm">Al registrarte entras automáticamente en la liga global de todos los usuarios. ¡Compite por el gran premio!</p>
+            </div>
+            <Link
+              href="/auth/registro"
+              className="flex-shrink-0 bg-verde-600 hover:bg-verde-500 text-white font-semibold px-6 py-2.5 rounded-xl text-sm transition-colors"
+            >
+              Únete gratis
             </Link>
           </div>
         </div>
