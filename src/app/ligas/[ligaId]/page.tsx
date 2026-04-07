@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabase';
 import { User } from '@supabase/supabase-js';
 import { Trophy, Copy, Check, Users, ArrowLeft, Trash2 } from 'lucide-react';
 import Link from 'next/link';
+import AdSenseClassification from '@/components/ligas/AdSenseClassification';
 
 interface Miembro {
   usuario_id: string;
@@ -212,6 +213,9 @@ export default function DetalleLigaPage() {
           </div>
         )}
       </div>
+
+      {/* Anuncio no invasivo debajo de clasificación */}
+      <AdSenseClassification />
 
       {/* Modal de confirmación de eliminación */}
       {mostrarConfirmEliminar && (
