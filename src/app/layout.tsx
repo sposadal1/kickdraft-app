@@ -44,6 +44,13 @@ export default function RootLayout({
   return (
     <html lang="es">
       <head>
+        <head>
+  {/* Google AdSense Verification */}
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6233133582004728" crossOrigin="anonymous"></script>
+  
+  {/* Resto del contenido de head */}
+  ...
+</head>
         {ADSENSE_PUBLISHER_ID && (
           <Script
             async
