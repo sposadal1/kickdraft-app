@@ -155,6 +155,34 @@ Los puntos se asignan según la fase del torneo:
 | K | Portugal, Playoff Intercontinental 1, Uzbekistán, Colombia |
 | L | Inglaterra, Croacia, Ghana, Panamá |
 
+## 💰 Configurar Google AdSense (monetización)
+
+Los anuncios son opcionales y no invasivos. La app no muestra ningún anuncio si las variables no están configuradas (ideal para desarrollo local).
+
+### Pasos
+
+1. Crea una cuenta en [Google AdSense](https://www.google.com/adsense) y espera la aprobación del sitio.
+2. Una vez aprobado, obtén tu **Publisher ID** (`ca-pub-XXXXXXXXXXXXXXXXX`).
+3. Crea dos unidades de anuncio en el panel de AdSense:
+   - **Footer Banner** — formato `Horizontal` / `Responsive`
+   - **Clasificación** — formato `Rectángulo` (300 × 250)
+4. Agrega las siguientes variables en `.env.local` y en Vercel (Settings → Environment Variables):
+
+```env
+NEXT_PUBLIC_ADSENSE_PUBLISHER_ID=ca-pub-XXXXXXXXXXXXXXXXX
+NEXT_PUBLIC_ADSENSE_FOOTER_SLOT=XXXXXXXXXX          # ID del banner de footer
+NEXT_PUBLIC_ADSENSE_CLASSIFICATION_SLOT=XXXXXXXXXX  # ID del rectángulo en clasificación
+```
+
+### Ubicaciones de los anuncios
+
+| Componente | Ubicación | Formato |
+|---|---|---|
+| `AdSenseFooter` | Footer global (todas las páginas) | Horizontal / Responsive |
+| `AdSenseClassification` | Debajo de tabla de clasificación en ligas | Rectángulo 300×250 |
+
+> **Nota:** En `localhost` sin las variables configuradas los componentes no renderizan nada, por lo que el layout permanece intacto durante el desarrollo.
+
 ## 🗺️ Roadmap
 
 - [ ] Autenticación completa con Supabase (Google + email)
