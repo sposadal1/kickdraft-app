@@ -14,11 +14,15 @@ export default function Navbar() {
   const [nombreUsuario, setNombreUsuario] = useState<string | null>(null);
 
   async function fetchNombre(userId: string) {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('perfiles')
       .select('nombre, apellido')
       .eq('id', userId)
       .single();
+    if (error) {
+      console.error('Navbar: error al cargar perfil:', error.message);
+      return;
+    }
     if (data) {
       const nombre = `${data.nombre ?? ''} ${data.apellido ?? ''}`.trim();
       setNombreUsuario(nombre || null);

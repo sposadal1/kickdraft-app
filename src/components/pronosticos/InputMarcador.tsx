@@ -64,6 +64,16 @@ export default function InputMarcador({
 
   const puntos = getPuntosPorFase(partido.fase);
 
+  function handleGolesLocalChange(e: React.ChangeEvent<HTMLInputElement>) {
+    userHasEdited.current = true;
+    setGolesLocal(Math.max(0, Math.min(20, parseInt(e.target.value) || 0)));
+  }
+
+  function handleGolesVisitanteChange(e: React.ChangeEvent<HTMLInputElement>) {
+    userHasEdited.current = true;
+    setGolesVisitante(Math.max(0, Math.min(20, parseInt(e.target.value) || 0)));
+  }
+
   return (
     <div className={`bg-gray-900 border rounded-xl p-4 ${bloqueado ? 'border-gray-700 opacity-75' : 'border-gray-800'}`}>  
       <div className="flex items-center justify-between mb-3">
@@ -96,7 +106,7 @@ export default function InputMarcador({
             max={20}
             value={golesLocal}
             disabled={bloqueado}
-            onChange={(e) => { userHasEdited.current = true; setGolesLocal(Math.max(0, Math.min(20, parseInt(e.target.value) || 0))); }}
+            onChange={handleGolesLocalChange}
             className="w-12 h-10 text-center text-lg font-bold bg-gray-800 border border-gray-700 rounded-lg text-white focus:border-verde-500 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
           />
           <span className="text-gray-500 font-bold">-</span>
@@ -106,7 +116,7 @@ export default function InputMarcador({
             max={20}
             value={golesVisitante}
             disabled={bloqueado}
-            onChange={(e) => { userHasEdited.current = true; setGolesVisitante(Math.max(0, Math.min(20, parseInt(e.target.value) || 0))); }}
+            onChange={handleGolesVisitanteChange}
             className="w-12 h-10 text-center text-lg font-bold bg-gray-800 border border-gray-700 rounded-lg text-white focus:border-verde-500 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
           />
         </div>
