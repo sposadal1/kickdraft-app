@@ -41,6 +41,8 @@ export default function CrearLigaPage() {
 
     const codigo = generarCodigoInvitacion();
 
+    console.log('Creando liga con usuario:', usuario.id, 'nombre:', nombre.trim(), 'codigo:', codigo);
+
     const { data: liga, error: ligaError } = await supabase
       .from('ligas')
       .insert({
@@ -52,17 +54,30 @@ export default function CrearLigaPage() {
       .single();
 
     if (ligaError || !liga) {
-      setError('Error al crear la liga');
+      console.error('Error al crear liga:', ligaError?.message, ligaError?.details, ligaError?.hint, ligaError?.code);
+      const msg = ligaError?.message ?? '';
+      if (msg.includes('duplicate') || msg.includes('unique') || ligaError?.code === '23505') {
+        setError('Ya existe una liga con ese código. Por favor intenta de nuevo.');
+      } else if (msg.includes('foreign key') || ligaError?.code === '23503') {
+        setError('Error de autenticación. Por favor cierra sesión, vuelve a entrar e intenta de nuevo.');
+      } else if (msg.includes('permission') || msg.includes('policy') || ligaError?.code === '42501') {
+        setError('No tienes permiso para crear ligas. Asegúrate de haber iniciado sesión correctamente.');
+      } else {
+        setError(`Error al crear la liga: ${ligaError?.message ?? 'Error desconocido'}`);
+      }
       setCargando(false);
       return;
     }
+
+    console.log('Liga creada exitosamente:', liga.id);
 
     const { error: miembroError } = await supabase
       .from('miembros_liga')
       .insert({ liga_id: liga.id, usuario_id: usuario.id, total_puntos: 0 });
 
     if (miembroError) {
-      setError('Liga creada pero hubo un error al unirte como miembro');
+      console.error('Error al añadir miembro:', miembroError.message);
+      setError(`Liga creada pero hubo un error al unirte como miembro: ${miembroError.message}`);
       setCargando(false);
       return;
     }

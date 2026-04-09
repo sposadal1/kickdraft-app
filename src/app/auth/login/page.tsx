@@ -24,8 +24,14 @@ export default function LoginPage() {
     setError('');
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) {
-      if (error.message.toLowerCase().includes('invalid') || error.message.toLowerCase().includes('credentials')) {
+      console.error('Error en login:', error.message);
+      const msg = error.message.toLowerCase();
+      if (msg.includes('email not confirmed') || msg.includes('email_not_confirmed')) {
+        setError('Tu email no ha sido confirmado. Revisa tu bandeja de entrada y haz clic en el enlace de confirmación que te enviamos al registrarte.');
+      } else if (msg.includes('invalid') || msg.includes('credentials') || msg.includes('wrong password')) {
         setError('Email o contraseña incorrectos. ¿Olvidaste tu contraseña? Usa el enlace mágico.');
+      } else if (msg.includes('too many requests') || msg.includes('rate limit')) {
+        setError('Demasiados intentos fallidos. Espera unos minutos y vuelve a intentarlo.');
       } else {
         setError('No se pudo iniciar sesión. Intenta de nuevo o usa el enlace mágico.');
       }
