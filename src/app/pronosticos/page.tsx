@@ -10,15 +10,13 @@ import { FasePartido } from '@/types/partido';
 import { obtenerNombreFase } from '@/lib/utils';
 import { supabase } from '@/lib/supabase';
 import { User } from '@supabase/supabase-js';
+import { useCachedPronosticos } from '@/hooks/useCachedPronosticos';
 
 const FASES_DISPONIBLES: FasePartido[] = ['grupos'];
-
-type PronosticoData = { golesLocal: number; golesVisitante: number; puntosObtenidos: number };
 
 export default function PronosticosPage() {
   const [faseActiva, setFaseActiva] = useState<FasePartido>('grupos');
   const [usuario, setUsuario] = useState<User | null | undefined>(undefined);
-  const [pronosticos, setPronosticos] = useState<Record<number, PronosticoData>>({});
   const [guardando, setGuardando] = useState<Record<number, boolean>>({});
   const [guardado, setGuardado] = useState<Record<number, boolean>>({});
   const [errorGuardando, setErrorGuardando] = useState<Record<number, boolean>>({});
@@ -29,6 +27,9 @@ export default function PronosticosPage() {
   const ahora = new Date();
   const partidosFiltrados = PARTIDOS.filter((p) => p.fase === faseActiva);
 
+  // Use cached hook — avoids delay when navigating back to this page
+  const { pronosticos, actualizarPronostico } = useCachedPronosticos(usuario?.id);
+
   const totalPuntos = Object.values(pronosticos).reduce((sum, p) => sum + p.puntosObtenidos, 0);
 
   useEffect(() => {
@@ -36,7 +37,6 @@ export default function PronosticosPage() {
       if (!error && data.user) {
         setUsuario(data.user);
         usuarioRef.current = data.user;
-        cargarPronosticos(data.user);
       } else {
         setUsuario(null);
         usuarioRef.current = null;
@@ -46,7 +46,6 @@ export default function PronosticosPage() {
       if (session?.user) {
         setUsuario(session.user);
         usuarioRef.current = session.user;
-        cargarPronosticos(session.user);
       } else {
         setUsuario(null);
         usuarioRef.current = null;
@@ -54,25 +53,6 @@ export default function PronosticosPage() {
     });
     return () => listener.subscription.unsubscribe();
   }, []);
-
-  async function cargarPronosticos(user: User) {
-    const { data } = await supabase
-      .from('pronosticos')
-      .select('partido_id, goles_local_pronosticado, goles_visitante_pronosticado, puntos_obtenidos')
-      .eq('usuario_id', user.id);
-
-    if (data) {
-      const map: Record<number, PronosticoData> = {};
-      for (const row of data) {
-        map[row.partido_id] = {
-          golesLocal: row.goles_local_pronosticado,
-          golesVisitante: row.goles_visitante_pronosticado,
-          puntosObtenidos: row.puntos_obtenidos ?? 0,
-        };
-      }
-      setPronosticos(map);
-    }
-  }
 
   const guardarPronostico = useCallback(async (partidoId: number, golesLocal: number, golesVisitante: number) => {
     const user = usuarioRef.current;
@@ -99,15 +79,14 @@ export default function PronosticosPage() {
       return;
     }
 
-    setPronosticos((prev) => ({
-      ...prev,
-      [partidoId]: { golesLocal, golesVisitante, puntosObtenidos: prev[partidoId]?.puntosObtenidos ?? 0 },
-    }));
+    // Update the shared cache so returning to this page is instant
+    actualizarPronostico(partidoId, golesLocal, golesVisitante);
+
     setGuardado((prev) => ({ ...prev, [partidoId]: true }));
     setTimeout(() => {
       setGuardado((prev) => ({ ...prev, [partidoId]: false }));
     }, 2000);
-  }, []);
+  }, [actualizarPronostico]);
 
   if (usuario === undefined) {
     return (
