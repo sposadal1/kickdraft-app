@@ -11,11 +11,39 @@ export default function Navbar() {
   const router = useRouter();
   const [menuAbierto, setMenuAbierto] = useState(false);
   const [usuario, setUsuario] = useState<User | null>(null);
+  const [nombreUsuario, setNombreUsuario] = useState<string | null>(null);
+
+  async function fetchNombre(userId: string) {
+    const { data, error } = await supabase
+      .from('perfiles')
+      .select('nombre, apellido')
+      .eq('id', userId)
+      .single();
+    if (error) {
+      console.error('Navbar: error al cargar perfil:', error.message);
+      return;
+    }
+    if (data) {
+      const nombre = `${data.nombre ?? ''} ${data.apellido ?? ''}`.trim();
+      setNombreUsuario(nombre || null);
+    }
+  }
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data, error }) => { if (!error) setUsuario(data.user); });
+    supabase.auth.getUser().then(({ data, error }) => {
+      if (!error && data.user) {
+        setUsuario(data.user);
+        fetchNombre(data.user.id);
+      }
+    });
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUsuario(session?.user ?? null);
+      if (session?.user) {
+        setUsuario(session.user);
+        fetchNombre(session.user.id);
+      } else {
+        setUsuario(null);
+        setNombreUsuario(null);
+      }
     });
     return () => listener.subscription.unsubscribe();
   }, []);
@@ -53,7 +81,7 @@ export default function Navbar() {
           <div className="hidden md:flex items-center gap-4">
             {usuario ? (
               <>
-                <span className="text-gray-300 text-sm">{usuario.email}</span>
+                <span className="text-gray-300 text-sm">{nombreUsuario ?? usuario.email}</span>
                 <button
                   onClick={handleLogout}
                   className="bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
@@ -107,7 +135,7 @@ export default function Navbar() {
             </Link>
             {usuario ? (
               <>
-                <span className="block px-2 py-1 text-gray-300 text-sm">{usuario.email}</span>
+                <span className="block px-2 py-1 text-gray-300 text-sm">{nombreUsuario ?? usuario.email}</span>
                 <button
                   onClick={async () => { await handleLogout(); setMenuAbierto(false); }}
                   className="block px-2 py-1 text-red-400 font-medium text-left"

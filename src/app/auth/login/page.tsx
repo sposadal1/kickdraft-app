@@ -22,38 +22,50 @@ export default function LoginPage() {
     e.preventDefault();
     setCargando(true);
     setError('');
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) {
-      console.error('Error en login:', error.message);
-      const msg = error.message.toLowerCase();
-      if (msg.includes('email not confirmed') || msg.includes('email_not_confirmed')) {
-        setError('Tu email no ha sido confirmado. Revisa tu bandeja de entrada y haz clic en el enlace de confirmación que te enviamos al registrarte.');
-      } else if (msg.includes('invalid') || msg.includes('credentials') || msg.includes('wrong password')) {
-        setError('Email o contraseña incorrectos. ¿Olvidaste tu contraseña? Usa el enlace mágico.');
-      } else if (msg.includes('too many requests') || msg.includes('rate limit')) {
-        setError('Demasiados intentos fallidos. Espera unos minutos y vuelve a intentarlo.');
+    try {
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) {
+        console.error('Error en login:', error.message);
+        const msg = error.message.toLowerCase();
+        if (msg.includes('email not confirmed') || msg.includes('email_not_confirmed')) {
+          setError('Tu email no ha sido confirmado. Revisa tu bandeja de entrada y haz clic en el enlace de confirmación que te enviamos al registrarte.');
+        } else if (msg.includes('invalid') || msg.includes('credentials') || msg.includes('wrong password')) {
+          setError('Email o contraseña incorrectos. Si te registraste con un enlace mágico, usa esa opción para ingresar.');
+        } else if (msg.includes('too many requests') || msg.includes('rate limit')) {
+          setError('Demasiados intentos fallidos. Espera unos minutos y vuelve a intentarlo.');
+        } else {
+          setError(error.message);
+        }
+        setCargando(false);
       } else {
-        setError('No se pudo iniciar sesión. Intenta de nuevo o usa el enlace mágico.');
+        router.push('/');
+        router.refresh();
+        // Keep cargando=true so the button stays in loading state during navigation
       }
-    } else {
-      router.push('/');
-      router.refresh();
+    } catch (err) {
+      console.error('Error inesperado en login:', err);
+      setError('Error inesperado. Intenta de nuevo.');
+      setCargando(false);
     }
-    setCargando(false);
   }
 
   async function handleMagicLink(e: React.FormEvent) {
     e.preventDefault();
     setCargando(true);
     setError('');
-    const { error } = await supabase.auth.signInWithOtp({
-      email,
-      options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
-    });
-    if (error) {
-      setError('No se pudo enviar el enlace. Intenta de nuevo.');
-    } else {
-      setMagicLinkEnviado(true);
+    try {
+      const { error } = await supabase.auth.signInWithOtp({
+        email,
+        options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
+      });
+      if (error) {
+        setError('No se pudo enviar el enlace. Intenta de nuevo.');
+      } else {
+        setMagicLinkEnviado(true);
+      }
+    } catch (err) {
+      console.error('Error inesperado en magic link:', err);
+      setError('Error inesperado. Intenta de nuevo.');
     }
     setCargando(false);
   }
@@ -146,6 +158,16 @@ export default function LoginPage() {
                   </button>
                 </div>
               </div>
+
+              <div className="flex justify-end">
+                  <button
+                    type="button"
+                    onClick={() => { setModo('magic-link'); setError(''); }}
+                    className="text-sm text-verde-400 hover:text-verde-300"
+                  >
+                    ¿Olvidaste tu contraseña?
+                  </button>
+                </div>
 
               <button
                 type="submit"

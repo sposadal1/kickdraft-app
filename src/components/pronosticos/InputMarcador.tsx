@@ -32,41 +32,47 @@ export default function InputMarcador({
   const [golesLocal, setGolesLocal] = useState(pronosticoInicial?.golesLocal ?? 0);
   const [golesVisitante, setGolesVisitante] = useState(pronosticoInicial?.golesVisitante ?? 0);
 
-  const esPrimerRender = useRef(true);
   const onGuardarRef = useRef(onGuardar);
-  // Track whether we have already synced the initial data from Supabase
-  const iniciado = useRef(false);
+  // True once the user has interacted with this input; prevents Supabase sync from
+  // overwriting in-progress edits and also gates the auto-save debounce.
+  const userHasEdited = useRef(false);
 
   useEffect(() => {
     onGuardarRef.current = onGuardar;
   }, [onGuardar]);
 
-  // Sync state when pronosticoInicial arrives from Supabase for the first time
+  // Sync state when pronosticoInicial arrives from Supabase, but only when the
+  // user has not yet started editing this particular input.
   useEffect(() => {
-    if (pronosticoInicial !== undefined && !iniciado.current) {
-      iniciado.current = true;
+    if (pronosticoInicial !== undefined && !userHasEdited.current) {
       setGolesLocal(pronosticoInicial.golesLocal);
       setGolesVisitante(pronosticoInicial.golesVisitante);
-      // Also reset esPrimerRender so the sync above doesn't trigger a save
-      esPrimerRender.current = true;
     }
   }, [pronosticoInicial]);
 
+  // Auto-save debounce: fires 500 ms after the user makes a change.
   useEffect(() => {
-    if (esPrimerRender.current) {
-      esPrimerRender.current = false;
-      return;
-    }
+    if (!userHasEdited.current) return;
     if (bloqueado) return;
 
     const timer = setTimeout(() => {
       onGuardarRef.current(golesLocal, golesVisitante);
-    }, 900);
+    }, 500);
 
     return () => clearTimeout(timer);
   }, [golesLocal, golesVisitante, bloqueado]);
 
   const puntos = getPuntosPorFase(partido.fase);
+
+  function handleGolesLocalChange(e: React.ChangeEvent<HTMLInputElement>) {
+    userHasEdited.current = true;
+    setGolesLocal(Math.max(0, Math.min(20, parseInt(e.target.value) || 0)));
+  }
+
+  function handleGolesVisitanteChange(e: React.ChangeEvent<HTMLInputElement>) {
+    userHasEdited.current = true;
+    setGolesVisitante(Math.max(0, Math.min(20, parseInt(e.target.value) || 0)));
+  }
 
   return (
     <div className={`bg-gray-900 border rounded-xl p-4 ${bloqueado ? 'border-gray-700 opacity-75' : 'border-gray-800'}`}>  
@@ -100,7 +106,7 @@ export default function InputMarcador({
             max={20}
             value={golesLocal}
             disabled={bloqueado}
-            onChange={(e) => setGolesLocal(Math.max(0, Math.min(20, parseInt(e.target.value) || 0))) }
+            onChange={handleGolesLocalChange}
             className="w-12 h-10 text-center text-lg font-bold bg-gray-800 border border-gray-700 rounded-lg text-white focus:border-verde-500 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
           />
           <span className="text-gray-500 font-bold">-</span>
@@ -110,7 +116,7 @@ export default function InputMarcador({
             max={20}
             value={golesVisitante}
             disabled={bloqueado}
-            onChange={(e) => setGolesVisitante(Math.max(0, Math.min(20, parseInt(e.target.value) || 0)))}
+            onChange={handleGolesVisitanteChange}
             className="w-12 h-10 text-center text-lg font-bold bg-gray-800 border border-gray-700 rounded-lg text-white focus:border-verde-500 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
           />
         </div>
