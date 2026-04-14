@@ -63,7 +63,7 @@ export default function RootLayout({
       <body className="font-sans bg-black min-h-screen flex flex-col">
         <Navbar />
         <ErrorBoundary>
-          <main className="flex-1">{children}</main>
+          <main className="flex-1 pb-16 md:pb-0">{children}</main>
         </ErrorBoundary>
         {/* Footer con anuncio pequeño no invasivo */}
         <footer className="border-t border-gray-900 py-4 px-4">

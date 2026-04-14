@@ -43,24 +43,24 @@ export default function TarjetaPartido({ partido, equipoLocal, equipoVisitante }
                 alt={equipoLocal.nombre}
                 width={48}
                 height={32}
-                className="rounded shadow"
+                className="rounded shadow w-8 h-5 sm:w-12 sm:h-8"
               />
             ) : (
-              <div className="w-12 h-8 bg-gray-700 rounded flex items-center justify-center text-xs text-gray-400">
+              <div className="w-8 h-5 sm:w-12 sm:h-8 bg-gray-700 rounded flex items-center justify-center text-[10px] text-gray-400">
                 {equipoLocal.codigoPais}
               </div>
             )}
-            <span className="text-sm font-semibold text-white text-center">{equipoLocal.nombreCorto}</span>
+            <span className="text-[10px] sm:text-sm font-semibold text-white text-center">{equipoLocal.nombreCorto}</span>
           </div>
 
           {/* Marcador */}
           <div className="flex items-center gap-2">
             {partido.estado === 'finalizado' ? (
-              <span className="text-2xl font-bold text-white">
+              <span className="text-xl sm:text-2xl font-bold text-white">
                 {partido.golesLocal} - {partido.golesVisitante}
               </span>
             ) : (
-              <span className="text-2xl font-bold text-gray-500">VS</span>
+              <span className="text-xl sm:text-2xl font-bold text-gray-500">VS</span>
             )}
           </div>
 
@@ -72,14 +72,14 @@ export default function TarjetaPartido({ partido, equipoLocal, equipoVisitante }
                 alt={equipoVisitante.nombre}
                 width={48}
                 height={32}
-                className="rounded shadow"
+                className="rounded shadow w-8 h-5 sm:w-12 sm:h-8"
               />
             ) : (
-              <div className="w-12 h-8 bg-gray-700 rounded flex items-center justify-center text-xs text-gray-400">
+              <div className="w-8 h-5 sm:w-12 sm:h-8 bg-gray-700 rounded flex items-center justify-center text-[10px] text-gray-400">
                 {equipoVisitante.codigoPais}
               </div>
             )}
-            <span className="text-sm font-semibold text-white text-center">{equipoVisitante.nombreCorto}</span>
+            <span className="text-[10px] sm:text-sm font-semibold text-white text-center">{equipoVisitante.nombreCorto}</span>
           </div>
         </div>
 
