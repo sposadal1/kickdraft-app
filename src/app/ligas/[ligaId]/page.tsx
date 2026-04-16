@@ -50,6 +50,8 @@ export default function DetalleLigaPage() {
       setUsuario(data.user);
       cargarLiga(data.user.id);
     });
+    // cargarLiga es estable dentro del efecto; incluirla causaría bucles infinitos
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ligaId, router]);
 
   async function cargarLiga(userId: string) {

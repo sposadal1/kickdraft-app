@@ -17,6 +17,7 @@ export default function TarjetaLiga({ liga, miembros, posicionUsuario, puntosUsu
           {/* Avatar de la liga */}
           <div className="w-12 h-12 rounded-full bg-verde-700 flex items-center justify-center text-white font-bold text-lg flex-shrink-0">
             {liga.avatarUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
               <img src={liga.avatarUrl} alt={liga.nombre} className="w-full h-full rounded-full object-cover" />
             ) : (
               liga.nombre.charAt(0).toUpperCase()
