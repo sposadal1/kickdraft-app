@@ -60,36 +60,6 @@ export default function RegistroPage() {
     }
 
     if (data.user) {
-      // Insert profile regardless of email confirmation status
-      const { error: perfilError } = await supabase.from('perfiles').upsert({
-        id: data.user.id,
-        nombre: form.nombre,
-        apellido: form.apellido ?? '',
-        email: form.email,
-      });
-      if (perfilError) {
-        console.error('Error al crear perfil:', perfilError.message);
-      }
-
-      // Auto-unirse a la Liga Mundial
-      const { data: ligaMundial, error: ligaError } = await supabase
-        .from('ligas')
-        .select('id')
-        .eq('es_global', true)
-        .single();
-      if (ligaError) {
-        console.error('Error buscando Liga Mundial:', ligaError.message);
-      }
-      if (ligaMundial) {
-        const { error: miembroError } = await supabase.from('miembros_liga').upsert(
-          { liga_id: ligaMundial.id, usuario_id: data.user.id, total_puntos: 0 },
-          { onConflict: 'liga_id,usuario_id' }
-        );
-        if (miembroError) {
-          console.error('Error al unirse a Liga Mundial:', miembroError.message);
-        }
-      }
-
       if (data.session) {
         // Email confirmation not required — user is immediately logged in
         router.push('/');
