@@ -264,4 +264,96 @@ MIT
 
 ---
 
+## 🔧 Registro de Cambios — Auditoría Técnica (Abr 2026)
+
+### 🐛 Bug 1 — Error `avatar_url` al crear liga
+
+**Causa raíz:** La columna `avatar_url` podía estar ausente si la base de datos fue creada sin ejecutar correctamente `schema.sql` completo, o si Supabase tiene el schema cache desactualizado. Además no existía política RLS de `UPDATE` ni `DELETE` para la tabla `ligas`, por lo que editar el nombre/avatar o eliminar una liga fallaba silenciosamente.
+
+**Fix:** Migración `003_fix_rls_and_avatar.sql` que:
+1. Ejecuta `ALTER TABLE ligas ADD COLUMN IF NOT EXISTS avatar_url TEXT`.
+2. Añade política `"Creadores actualizan sus ligas"` (UPDATE).
+3. Añade política `"Creadores eliminan sus ligas"` (DELETE).
+
+**Verificación manual:**
+```bash
+# En el SQL Editor de Supabase:
+SELECT column_name FROM information_schema.columns
+WHERE table_name = 'ligas' AND column_name = 'avatar_url';
+
+SELECT policyname FROM pg_policies WHERE tablename = 'ligas';
+# Debe mostrar: Todos ven las ligas | Usuarios crean ligas | Creadores actualizan... | Creadores eliminan...
+```
+Luego inicia sesión en la app, ve a `/ligas/crear`, crea una liga con imagen → debe funcionar sin error.
+
+---
+
+### 🐛 Bug 2 — Usuarios no ven participantes ni puntos de la liga
+
+**Causa raíz:** La política RLS en `perfiles` era `USING (auth.uid() = id)`, lo que solo permitía ver el propio perfil. Al hacer el JOIN `miembros_liga → perfiles` para cargar la clasificación, todos los perfiles de otros usuarios llegaban como `null`. Resultado: la tabla de clasificación muestra "Usuario" en vez del nombre real de cada miembro.
+
+Además, no existía política `DELETE` en `miembros_liga`, por lo que el botón "Expulsar miembro" del creador fallaba silenciosamente.
+
+**Fix:** Migración `003_fix_rls_and_avatar.sql` que:
+1. Añade política `"Ver perfiles de compañeros de liga"` en `perfiles` — permite ver perfiles de personas con las que se comparte al menos una liga.
+2. Añade política `"Miembros salen o son expulsados de liga"` en `miembros_liga` (DELETE) — permite al propio usuario salir, o al creador de la liga expulsar.
+
+**Verificación manual:**
+Entra a `/ligas/<id>` con dos usuarios distintos en la misma liga → ambos deben ver sus nombres reales en la clasificación. El creador debe poder expulsar un miembro desde la página de administración.
+
+---
+
+### 🐛 Bug 3 — Alineaciones con jugadores retirados (snapshot Abr 2026)
+
+**Causa raíz:** El archivo `src/data/alineaciones.ts` contenía jugadores que se han retirado de sus selecciones nacionales:
+
+| Equipo | Jugador incorrecto | Reemplazado por | Motivo |
+|--------|-------------------|-----------------|--------|
+| México (id 1) | G. Ochoa (Portero) | L. Malagón | Ochoa se retiró del fútbol en 2024; Malagón es el portero titular de México |
+| México (id 1) | R. Jiménez | S. Giménez | Santiago Giménez es el delantero titular indiscutible |
+| Alemania (id 17) | T. Kroos | P. Groß | Kroos se retiró de la selección tras la Eurocopa 2024 |
+| Argentina (id 37) | A. Di María | A. Garnacho | Di María se retiró de la selección tras la Copa América 2024 |
+| Portugal (id 41) | J. Moutinho | J. Neves + J. Palhinha | Moutinho se retiró en 2022; João Neves (PSG) y Palhinha (Bayern) son pilares actuales |
+
+**Fuente de referencia:** FIFA.com / perfiles de selecciones nacionales — snapshot 16 de abril de 2026.
+
+**Verificación manual:**
+Navega a `/partidos/1` (México) → debe mostrar L. Malagón como portero.
+Navega a `/partidos/9` (Alemania) → no debe aparecer T. Kroos.
+Navega a `/partidos/19` (Argentina) → no debe aparecer A. Di María.
+Navega a `/partidos/21` (Portugal) → no debe aparecer J. Moutinho.
+
+---
+
+### 🔄 Cómo actualizar el dataset de partidos / alineaciones
+
+Los datos de partidos, alineaciones, historial y probabilidades están en `src/data/`:
+
+| Archivo | Contenido | Cómo actualizar |
+|---------|-----------|-----------------|
+| `src/data/partidos.ts` | Fixture completo de la fase de grupos | Actualizar `fechaHoraUTC`, `estadio`, `ciudad`, `estado`, `golesLocal`, `golesVisitante` según el calendario oficial FIFA |
+| `src/data/equipos.ts` | 48 equipos participantes | Actualizar si cambian clasificados (playoffs) |
+| `src/data/alineaciones.ts` | Alineaciones probables de 8 equipos | Actualizar antes de cada partido según noticias oficiales de cada federación (fuente: FIFA.com) |
+| `src/data/historial.ts` | H2H de los partidos de la jornada 1 | Agregar/corregir con fuentes como SoccerWay o la FIFA |
+| `src/data/probabilidades.ts` | Probabilidades calculadas con fórmula Elo | Recalcular usando el ranking FIFA vigente y la fórmula documentada en el archivo |
+
+**Pipeline reproducible para alineaciones:**
+1. Consultar la selección nacional en [FIFA.com](https://www.fifa.com) o en el comunicado oficial de la federación.
+2. Actualizar el array del equipo correspondiente en `src/data/alineaciones.ts`.
+3. Incluir en el comentario la fecha del snapshot: `// snapshot <fecha>`.
+4. Ejecutar `npm run build` para verificar que no hay errores de tipos.
+
+---
+
+### ✅ Resultados de tests/lint/build
+
+```bash
+npm run lint   # ✓ Solo advertencias, sin errores
+npx tsc --noEmit  # ✓ Sin errores de tipos
+npm run build  # ✓ Build exitoso (14/14 páginas)
+```
+
+---
+
 Hecho con ❤️ para los amantes del fútbol · Mundial 2026 🏆
+

@@ -11,12 +11,13 @@ export interface AlineacionEquipo {
 }
 
 export const ALINEACIONES: AlineacionEquipo[] = [
-  // México
+  // México — snapshot FIFA ranking / plantel Abr 2026
+  // L. Malagón reemplaza a G. Ochoa (retirado 2024); S. Giménez titular indiscutible
   {
     equipoId: 1,
     formacion: '4-3-3',
     jugadores: [
-      { nombre: 'G. Ochoa', numero: 13, posicion: 'POR' },
+      { nombre: 'L. Malagón', numero: 13, posicion: 'POR' },
       { nombre: 'J. Sánchez', numero: 2, posicion: 'DEF' },
       { nombre: 'C. Montes', numero: 3, posicion: 'DEF' },
       { nombre: 'H. Moreno', numero: 5, posicion: 'DEF' },
@@ -25,7 +26,7 @@ export const ALINEACIONES: AlineacionEquipo[] = [
       { nombre: 'C. Rodríguez', numero: 10, posicion: 'MED' },
       { nombre: 'O. Pineda', numero: 6, posicion: 'MED' },
       { nombre: 'H. Lozano', numero: 22, posicion: 'DEL' },
-      { nombre: 'R. Jiménez', numero: 9, posicion: 'DEL' },
+      { nombre: 'S. Giménez', numero: 9, posicion: 'DEL' },
       { nombre: 'A. Vega', numero: 11, posicion: 'DEL' },
     ],
   },
@@ -47,7 +48,8 @@ export const ALINEACIONES: AlineacionEquipo[] = [
       { nombre: 'Endrick', numero: 9, posicion: 'DEL' },
     ],
   },
-  // Alemania
+  // Alemania — snapshot FIFA ranking / plantel Abr 2026
+  // T. Kroos se retiró de la selección tras la Eurocopa 2024; P. Groß asumió rol de mediocampista
   {
     equipoId: 17,
     formacion: '4-2-3-1',
@@ -58,7 +60,7 @@ export const ALINEACIONES: AlineacionEquipo[] = [
       { nombre: 'J. Tah', numero: 4, posicion: 'DEF' },
       { nombre: 'M. Mittelstädt', numero: 3, posicion: 'DEF' },
       { nombre: 'R. Andrich', numero: 23, posicion: 'MED' },
-      { nombre: 'T. Kroos', numero: 8, posicion: 'MED' },
+      { nombre: 'P. Groß', numero: 14, posicion: 'MED' },
       { nombre: 'J. Musiala', numero: 10, posicion: 'DEL' },
       { nombre: 'I. Gündogan', numero: 21, posicion: 'DEL' },
       { nombre: 'L. Wirtz', numero: 17, posicion: 'DEL' },
@@ -101,7 +103,8 @@ export const ALINEACIONES: AlineacionEquipo[] = [
       { nombre: 'M. Thuram', numero: 9, posicion: 'DEL' },
     ],
   },
-  // Argentina
+  // Argentina — snapshot FIFA ranking / plantel Abr 2026
+  // A. Di María se retiró de la selección tras la Copa América 2024; A. Garnacho ocupa el carril izquierdo
   {
     equipoId: 37,
     formacion: '4-3-3',
@@ -114,12 +117,13 @@ export const ALINEACIONES: AlineacionEquipo[] = [
       { nombre: 'R. De Paul', numero: 7, posicion: 'MED' },
       { nombre: 'E. Fernández', numero: 24, posicion: 'MED' },
       { nombre: 'A. Mac Allister', numero: 20, posicion: 'MED' },
-      { nombre: 'A. Di María', numero: 11, posicion: 'DEL' },
+      { nombre: 'A. Garnacho', numero: 11, posicion: 'DEL' },
       { nombre: 'L. Messi', numero: 10, posicion: 'DEL' },
       { nombre: 'J. Álvarez', numero: 9, posicion: 'DEL' },
     ],
   },
-  // Portugal
+  // Portugal — snapshot FIFA ranking / plantel Abr 2026
+  // J. Moutinho se retiró de la selección en 2022; J. Neves (PSG) ocupa ese rol de interior
   {
     equipoId: 41,
     formacion: '4-3-3',
@@ -129,9 +133,9 @@ export const ALINEACIONES: AlineacionEquipo[] = [
       { nombre: 'R. Dias', numero: 4, posicion: 'DEF' },
       { nombre: 'D. Dalot', numero: 2, posicion: 'DEF' },
       { nombre: 'N. Mendes', numero: 19, posicion: 'DEF' },
-      { nombre: 'R. Neves', numero: 15, posicion: 'MED' },
+      { nombre: 'J. Palhinha', numero: 16, posicion: 'MED' },
       { nombre: 'B. Fernandes', numero: 8, posicion: 'MED' },
-      { nombre: 'J. Moutinho', numero: 18, posicion: 'MED' },
+      { nombre: 'J. Neves', numero: 18, posicion: 'MED' },
       { nombre: 'B. Silva', numero: 10, posicion: 'DEL' },
       { nombre: 'C. Ronaldo', numero: 7, posicion: 'DEL' },
       { nombre: 'R. Leão', numero: 11, posicion: 'DEL' },

@@ -63,6 +63,8 @@ export default function EditarLigaPage() {
       setUsuario(data.user);
       cargarDatos(data.user.id);
     });
+    // cargarDatos es estable dentro del efecto; incluirla causaría bucles infinitos
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ligaId, router]);
 
   async function cargarDatos(userId: string) {
