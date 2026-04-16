@@ -31,17 +31,63 @@ export default function Navbar() {
     }
   }
 
+  async function repararPerfil(user: User) {
+    // Check if the user has a profile row
+    const { data: perfil, error: perfilError } = await supabase
+      .from('perfiles')
+      .select('id')
+      .eq('id', user.id)
+      .single();
+
+    // PGRST116 = "Row not found" — only upsert when the row is genuinely missing
+    if (perfilError?.code === 'PGRST116' || (!perfilError && !perfil)) {
+      const meta = user.user_metadata ?? {};
+      await supabase.from('perfiles').upsert({
+        id: user.id,
+        email: user.email,
+        nombre: meta.nombre || meta.full_name?.split(' ')[0] || 'Usuario',
+        apellido: meta.apellido || (meta.full_name?.split(' ').slice(1).join(' ') ?? ''),
+      });
+    }
+
+    // Ensure the user is a member of the global league
+    const { data: ligaGlobal } = await supabase
+      .from('ligas')
+      .select('id')
+      .eq('es_global', true)
+      .single();
+
+    if (ligaGlobal) {
+      const { data: membresia } = await supabase
+        .from('miembros_liga')
+        .select('usuario_id')
+        .eq('usuario_id', user.id)
+        .eq('liga_id', ligaGlobal.id)
+        .single();
+
+      if (!membresia) {
+        await supabase.from('miembros_liga').upsert({
+          usuario_id: user.id,
+          liga_id: ligaGlobal.id,
+          total_puntos: 0,
+        });
+      }
+    }
+  }
+
   useEffect(() => {
     supabase.auth.getUser().then(({ data, error }) => {
       if (!error && data.user) {
         setUsuario(data.user);
         fetchNombre(data.user.id);
+        repararPerfil(data.user);
       }
     });
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session?.user) {
         setUsuario(session.user);
         fetchNombre(session.user.id);
+        repararPerfil(session.user);
       } else {
         setUsuario(null);
         setNombreUsuario(null);

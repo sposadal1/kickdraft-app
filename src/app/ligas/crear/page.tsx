@@ -1,9 +1,9 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { generarCodigoInvitacion } from '@/lib/utils';
-import { Trophy, Copy, Check } from 'lucide-react';
+import { Trophy, Copy, Check, Upload } from 'lucide-react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import { User } from '@supabase/supabase-js';
@@ -12,10 +12,14 @@ export default function CrearLigaPage() {
   const router = useRouter();
   const [usuario, setUsuario] = useState<User | null | undefined>(undefined);
   const [nombre, setNombre] = useState('');
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const [avatarWarning, setAvatarWarning] = useState('');
   const [ligaCreada, setLigaCreada] = useState<{ nombre: string; codigo: string } | null>(null);
   const [copiado, setCopiado] = useState(false);
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data, error }) => {
@@ -33,6 +37,27 @@ export default function CrearLigaPage() {
     return () => listener.subscription.unsubscribe();
   }, [router]);
 
+  const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml'];
+
+  function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0] ?? null;
+    if (file) {
+      if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
+        setAvatarWarning('Solo se permiten imágenes (JPG, PNG, GIF, WebP, SVG).');
+        return;
+      }
+      setAvatarWarning('');
+      // Revoke previous preview URL to avoid memory leaks
+      if (avatarPreview) URL.revokeObjectURL(avatarPreview);
+      setAvatarFile(file);
+      setAvatarPreview(URL.createObjectURL(file));
+    } else {
+      if (avatarPreview) URL.revokeObjectURL(avatarPreview);
+      setAvatarFile(null);
+      setAvatarPreview(null);
+    }
+  }
+
   async function handleCrear(e: React.FormEvent) {
     e.preventDefault();
     if (!nombre.trim() || !usuario) return;
@@ -40,6 +65,30 @@ export default function CrearLigaPage() {
     setError('');
 
     const codigo = generarCodigoInvitacion();
+
+    // Upload avatar if provided
+    let avatar_url: string | null = null;
+    if (avatarFile) {
+      const mimeToExt: Record<string, string> = {
+        'image/jpeg': 'jpg',
+        'image/png': 'png',
+        'image/gif': 'gif',
+        'image/webp': 'webp',
+        'image/svg+xml': 'svg',
+      };
+      const ext = mimeToExt[avatarFile.type] ?? 'jpg';
+      const filePath = `${usuario.id}/${Date.now()}.${ext}`;
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(filePath, avatarFile, { upsert: true });
+      if (uploadError) {
+        console.warn('Avatar upload failed:', uploadError.message);
+        setAvatarWarning('No se pudo subir la imagen. La liga se creará sin foto.');
+      } else {
+        const { data: urlData } = supabase.storage.from('avatars').getPublicUrl(filePath);
+        avatar_url = urlData.publicUrl;
+      }
+    }
 
     console.log('Creando liga con usuario:', usuario.id, 'nombre:', nombre.trim(), 'codigo:', codigo);
 
@@ -49,6 +98,7 @@ export default function CrearLigaPage() {
         nombre: nombre.trim(),
         codigo_invitacion: codigo,
         creador_id: usuario.id,
+        ...(avatar_url ? { avatar_url } : {}),
       })
       .select()
       .single();
@@ -155,10 +205,33 @@ export default function CrearLigaPage() {
           <label className="block text-sm font-medium text-gray-300 mb-2">
             Foto de perfil (opcional)
           </label>
-          <div className="border-2 border-dashed border-gray-700 rounded-xl p-8 text-center text-gray-500 hover:border-gray-600 transition-colors cursor-pointer">
-            <Trophy className="w-8 h-8 mx-auto mb-2 opacity-30" />
-            <p className="text-sm">Haz clic para subir una imagen</p>
+          <div
+            className="border-2 border-dashed border-gray-700 rounded-xl p-8 text-center text-gray-500 hover:border-gray-600 transition-colors cursor-pointer"
+            onClick={() => fileInputRef.current?.click()}
+          >
+            {avatarPreview ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={avatarPreview}
+                alt="Vista previa"
+                className="w-20 h-20 rounded-full object-cover mx-auto mb-2"
+              />
+            ) : (
+              <Trophy className="w-8 h-8 mx-auto mb-2 opacity-30" />
+            )}
+            <p className="text-sm flex items-center justify-center gap-1">
+              <Upload className="w-4 h-4" />
+              {avatarFile ? avatarFile.name : 'Haz clic para subir una imagen'}
+            </p>
           </div>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={handleAvatarChange}
+          />
+          {avatarWarning && <p className="text-yellow-400 text-xs mt-2">{avatarWarning}</p>}
         </div>
 
         {error && <p className="text-red-400 text-sm">{error}</p>}
