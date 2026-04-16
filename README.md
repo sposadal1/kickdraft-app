@@ -1,6 +1,6 @@
-# ⚽ Kickdraft
+# ⚽ Kickdraft — Polla Mundialista 2026
 
-**Kickdraft** es una plataforma web de pollas mundialistas para el **Mundial de Fútbol FIFA 2026**. Haz tus pronósticos, crea ligas con amigos y demuestra que sabes de fútbol.
+**Kickdraft** es una aplicación web **mobile-first** (lista para ser PWA) de polla mundialista para el **Mundial de Fútbol FIFA 2026**. Haz tus pronósticos, crea ligas privadas con amigos, únete automáticamente a la **Liga Mundial 🌍** y demuestra que eres el mejor pronosticador.
 
 ## 🚀 Stack Tecnológico
 
@@ -8,11 +8,58 @@
 |------------|-----|
 | **Next.js 15** | Framework con App Router |
 | **TypeScript** | Tipado estático |
-| **Tailwind CSS** | Estilos utilitarios |
-| **Supabase** | Base de datos (PostgreSQL) + Autenticación |
-| **lucide-react** | Iconos |
-| **date-fns** | Manejo de fechas |
-| **date-fns-tz** | Zona horaria Colombia (UTC-5) |
+| **Tailwind CSS** | Estilos utilitarios (diseño mobile-first) |
+| **Supabase** | PostgreSQL + Auth + Storage |
+| **Lucide React** | Iconos |
+
+## ✨ Funcionalidades Principales
+
+### 📱 Diseño Mobile-First
+- Barra de navegación inferior para uso cómodo en móvil.
+- Tarjetas de partidos compactas optimizadas para pantallas pequeñas.
+- Interfaz lista para ser instalada como Progressive Web App (PWA).
+
+### 🔐 Autenticación Estricta por Correo y Contraseña
+- Registro con validación estricta: **mínimo 8 caracteres, 1 mayúscula, 1 minúscula y 1 número**.
+- Flujo de **Olvidé mi contraseña** (envío de enlace de recuperación por correo).
+- El Magic Link ha sido eliminado. Solo se permite Email/Password.
+
+### 🌍 Liga Mundial (Global)
+- Todos los usuarios registrados se unen automáticamente a la **Liga Mundial 🌍** al crear su cuenta.
+- Gestionada mediante el trigger `handle_new_user` en la base de datos.
+
+### 🔒 Ligas Privadas
+- Crea ligas privadas con códigos de invitación para competir con amigos.
+- Sube una foto de perfil personalizada para tu liga (almacenada en el bucket `avatars` de Supabase Storage).
+
+### ⚙️ Administración de Ligas
+El creador de cada liga tiene acceso a un panel de administración exclusivo donde puede:
+- **Cambiar el nombre** de la liga.
+- **Subir o cambiar la foto de perfil** de la liga (bucket `avatars` en Supabase Storage).
+- **Expulsar miembros** de la liga.
+
+### 📊 Seguimiento en Vivo y Puntuación
+- Seguimiento de resultados de partidos en tiempo real.
+- Puntos por **resultado correcto** (quién gana o empate) y por **marcador exacto**.
+
+### 🩹 Sistema Auto-Sanador de Perfiles
+- Al iniciar sesión, la app verifica silenciosamente si el usuario tiene un perfil (`perfiles`) y membresía en la Liga Mundial.
+- Si falta alguno de los dos, los crea automáticamente. Esto evita errores de clave foránea (`fk_miembros_perfiles`) al unirse o crear ligas.
+
+## 🏆 Sistema de Puntuación
+
+| Fase | Resultado correcto | Marcador exacto |
+|------|--------------------|-----------------|
+| Grupos | 1 punto | 2 puntos |
+| Dieciseisavos de final | 2 puntos | 3 puntos |
+| Octavos | 3 puntos | 6 puntos |
+| Cuartos | 4 puntos | 8 puntos |
+| Semifinal | 5 puntos | 10 puntos |
+| 3er y 4to puesto | 6 puntos | 12 puntos |
+| Final | 7 puntos | 14 puntos |
+
+- **Resultado correcto:** acertaste quién ganó (o que hubo empate).
+- **Marcador exacto:** acertaste el resultado y los goles exactos.
 
 ## 📦 Instalación
 
@@ -46,35 +93,111 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=tu-anon-key
 
 ### 4. Configurar Supabase
 
-1. Crea un proyecto en [supabase.com](https://supabase.com)
-2. Ve a **SQL Editor** y ejecuta el contenido de `supabase/schema.sql`
-3. Ejecuta también la migración de funcionalidades en vivo: `supabase/migrations/001_live_features.sql`
-4. Activa la autenticación por Google en **Authentication > Providers**
-5. Copia la URL y la anon key del proyecto
+1. Crea un proyecto en [supabase.com](https://supabase.com).
+2. Ve a **SQL Editor** y ejecuta el contenido de `supabase/schema.sql`.
+3. Ejecuta también las migraciones en `supabase/migrations/`.
+4. Copia la **Project URL** y la **anon key** en tu `.env.local`.
 
-### 5. Configurar API-Football (para datos en tiempo real)
-
-La clave de la API debe agregarse como secret en Supabase (NO en el código ni en Vercel):
-
-```bash
-supabase secrets set API_FOOTBALL_KEY=your_api_football_key_here
-```
-
-### 6. Deployar Edge Function (cron job de sincronización)
-
-```bash
-supabase functions deploy sync-live-scores
-```
-
-La función se ejecuta automáticamente cada minuto y sincroniza resultados en vivo desde API-Football.
-
-### 7. Correr el proyecto
+### 5. Correr el proyecto
 
 ```bash
 npm run dev
 ```
 
 Abre [http://localhost:3000](http://localhost:3000) en tu navegador.
+
+## 🗄️ Notas de Configuración de Base de Datos (Supabase)
+
+> ⚠️ **Importante para nuevos despliegues.** Estos pasos son necesarios para que todas las funciones de la app operen correctamente.
+
+### Bucket de Storage: `avatars`
+
+1. En tu panel de Supabase, ve a **Storage**.
+2. Crea un nuevo bucket con el nombre exacto `avatars`.
+3. Marca la opción **"Public bucket"** para que las fotos sean visibles públicamente.
+4. Ejecuta las siguientes políticas en el **SQL Editor** para permitir la subida y visualización de imágenes:
+
+```sql
+-- Permitir que cualquier usuario vea las fotos
+CREATE POLICY "Permitir ver avatares"
+ON storage.objects FOR SELECT
+USING (bucket_id = 'avatars');
+
+-- Permitir que usuarios autenticados suban fotos
+CREATE POLICY "Permitir subida de avatares"
+ON storage.objects FOR INSERT
+TO authenticated
+WITH CHECK (bucket_id = 'avatars');
+
+-- Permitir que usuarios autenticados actualicen fotos
+CREATE POLICY "Permitir actualizar avatares"
+ON storage.objects FOR UPDATE
+TO authenticated
+USING (bucket_id = 'avatars');
+```
+
+### Trigger `handle_new_user`
+
+Para que cada nuevo usuario reciba automáticamente su perfil y sea añadido a la **Liga Mundial 🌍** al registrarse, debes tener el trigger `handle_new_user` configurado en la base de datos. Asegúrate de que el trigger:
+
+1. Crea una fila en `public.perfiles` para el nuevo usuario.
+2. Busca la liga con `es_global = true` y crea una fila en `public.miembros_liga` para ese usuario.
+
+Además, asegúrate de que exista al menos una liga con `es_global = true`:
+
+```sql
+DO $$
+DECLARE
+  v_liga_id uuid;
+  v_admin_id uuid;
+BEGIN
+  SELECT id INTO v_liga_id FROM public.ligas WHERE es_global = true LIMIT 1;
+  IF v_liga_id IS NULL THEN
+    -- Nota: debe existir al menos un usuario registrado antes de correr este script
+    SELECT id INTO v_admin_id FROM auth.users LIMIT 1;
+    IF v_admin_id IS NOT NULL THEN
+      INSERT INTO public.ligas (nombre, codigo_invitacion, creador_id, es_global)
+      VALUES ('Liga Mundial 🌍', 'KICKDRAFT-GLOBAL', v_admin_id, true);
+    ELSE
+      RAISE NOTICE 'No hay usuarios en auth.users. Regístrate primero y luego vuelve a ejecutar este script.';
+    END IF;
+  END IF;
+END;
+$$;
+```
+
+### RLS (Row Level Security) para `ligas` y `miembros_liga`
+
+Para que todos los usuarios autenticados puedan ver las ligas en las que participan y la tabla de clasificación, ejecuta las siguientes políticas (limpia primero las políticas antiguas si las hubiera):
+
+```sql
+-- ⚠️ ADVERTENCIA: Este script elimina TODAS las políticas RLS existentes en `ligas` y `miembros_liga`.
+-- Revisa las políticas actuales antes de ejecutarlo en producción para no perder configuraciones personalizadas.
+
+-- Limpiar políticas existentes
+DO $$ DECLARE r RECORD; BEGIN
+  FOR r IN (SELECT policyname, tablename FROM pg_policies WHERE schemaname = 'public' AND tablename IN ('ligas', 'miembros_liga')) LOOP
+    EXECUTE format('DROP POLICY IF EXISTS %I ON %I', r.policyname, r.tablename);
+  END LOOP;
+END $$;
+
+-- Políticas para LIGAS
+ALTER TABLE public.ligas ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "ligas_select" ON public.ligas FOR SELECT TO authenticated USING (true);
+CREATE POLICY "ligas_insert" ON public.ligas FOR INSERT TO authenticated WITH CHECK (auth.uid() = creador_id);
+CREATE POLICY "ligas_update" ON public.ligas FOR UPDATE TO authenticated USING (creador_id = auth.uid());
+CREATE POLICY "ligas_delete" ON public.ligas FOR DELETE TO authenticated USING (creador_id = auth.uid());
+
+-- Políticas para MIEMBROS_LIGA
+ALTER TABLE public.miembros_liga ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "miembros_select" ON public.miembros_liga FOR SELECT TO authenticated USING (true);
+CREATE POLICY "miembros_insert" ON public.miembros_liga FOR INSERT TO authenticated WITH CHECK (auth.uid() = usuario_id);
+CREATE POLICY "miembros_update" ON public.miembros_liga FOR UPDATE TO authenticated USING (true);
+CREATE POLICY "miembros_delete" ON public.miembros_liga FOR DELETE TO authenticated
+USING (auth.uid() = usuario_id OR EXISTS (
+  SELECT 1 FROM public.ligas WHERE ligas.id = miembros_liga.liga_id AND ligas.creador_id = auth.uid()
+));
+```
 
 ## 📁 Estructura de carpetas
 
@@ -86,10 +209,10 @@ kickdraft-app/
 │   │   ├── layout.tsx          # Layout principal
 │   │   ├── partidos/           # Lista y detalle de partidos
 │   │   ├── pronosticos/        # Pronósticos del usuario
-│   │   ├── ligas/              # Ligas (crear, unirse, detalle)
-│   │   └── auth/               # Login y registro
+│   │   ├── ligas/              # Ligas (crear, unirse, detalle, administrar)
+│   │   └── auth/               # Login, registro, olvidé contraseña, actualizar contraseña
 │   ├── components/             # Componentes reutilizables
-│   │   ├── layout/             # Navbar
+│   │   ├── layout/             # Navbar (con auto-sanador de perfiles)
 │   │   ├── partidos/           # TarjetaPartido, TablaGrupo, EstadisticasEnVivo
 │   │   ├── pronosticos/        # InputMarcador
 │   │   └── ligas/              # TarjetaLiga, TablaClasificacion
@@ -107,36 +230,16 @@ kickdraft-app/
 │   │   └── supabase.ts         # Cliente de Supabase
 │   └── types/                  # Tipos TypeScript
 │       ├── equipo.ts
-│       ├── partido.ts          # Incluye EstadisticasPartido y EventoPartido
-│       ├── pronostico.ts       # Incluye puntosParciales
+│       ├── partido.ts
+│       ├── pronostico.ts
 │       ├── liga.ts
 │       └── usuario.ts
 ├── supabase/
 │   ├── schema.sql              # Esquema base de datos
-│   ├── migrations/
-│   │   └── 001_live_features.sql  # Tablas para funcionalidades en vivo
-│   └── functions/
-│       └── sync-live-scores/   # Edge Function cron (cada minuto)
+│   └── migrations/             # Migraciones SQL
 ├── .env.local.example
 └── README.md
 ```
-
-## 🏆 Sistema de Puntuación
-
-Los puntos se asignan según la fase del torneo:
-
-| Fase | Resultado correcto | Marcador exacto |
-|------|--------------------|-----------------|
-| Grupos | 1 punto | 2 puntos |
-| Dieciseisavos | 2 puntos | 3 puntos |
-| Octavos | 3 puntos | 6 puntos |
-| Cuartos | 4 puntos | 8 puntos |
-| Semifinal | 5 puntos | 10 puntos |
-| 3er y 4to puesto | 6 puntos | 12 puntos |
-| Final | 7 puntos | 14 puntos |
-
-- **Resultado correcto:** acertaste quién ganó (o que hubo empate)
-- **Marcador exacto:** acertaste el resultado y los goles exactos
 
 ## 🌍 Grupos del Mundial 2026
 
@@ -154,44 +257,6 @@ Los puntos se asignan según la fase del torneo:
 | J | Argentina, Argelia, Austria, Jordania |
 | K | Portugal, Playoff Intercontinental 1, Uzbekistán, Colombia |
 | L | Inglaterra, Croacia, Ghana, Panamá |
-
-## 💰 Configurar Google AdSense (monetización)
-
-Los anuncios son opcionales y no invasivos. La app no muestra ningún anuncio si las variables no están configuradas (ideal para desarrollo local).
-
-### Pasos
-
-1. Crea una cuenta en [Google AdSense](https://www.google.com/adsense) y espera la aprobación del sitio.
-2. Una vez aprobado, obtén tu **Publisher ID** (`ca-pub-XXXXXXXXXXXXXXXXX`).
-3. Crea dos unidades de anuncio en el panel de AdSense:
-   - **Footer Banner** — formato `Horizontal` / `Responsive`
-   - **Clasificación** — formato `Rectángulo` (300 × 250)
-4. Agrega las siguientes variables en `.env.local` y en Vercel (Settings → Environment Variables):
-
-```env
-NEXT_PUBLIC_ADSENSE_PUBLISHER_ID=ca-pub-XXXXXXXXXXXXXXXXX
-NEXT_PUBLIC_ADSENSE_FOOTER_SLOT=XXXXXXXXXX          # ID del banner de footer
-NEXT_PUBLIC_ADSENSE_CLASSIFICATION_SLOT=XXXXXXXXXX  # ID del rectángulo en clasificación
-```
-
-### Ubicaciones de los anuncios
-
-| Componente | Ubicación | Formato |
-|---|---|---|
-| `AdSenseFooter` | Footer global (todas las páginas) | Horizontal / Responsive |
-| `AdSenseClassification` | Debajo de tabla de clasificación en ligas | Rectángulo 300×250 |
-
-> **Nota:** En `localhost` sin las variables configuradas los componentes no renderizan nada, por lo que el layout permanece intacto durante el desarrollo.
-
-## 🗺️ Roadmap
-
-- [ ] Autenticación completa con Supabase (Google + email)
-- [ ] Sistema de pronósticos conectado a base de datos
-- [ ] Clasificación en tiempo real de ligas
-- [ ] Fase eliminatoria (dieciseisavos en adelante)
-- [ ] Notificaciones de resultados
-- [ ] Estadísticas del usuario
-- [ ] App móvil (React Native)
 
 ## 📄 Licencia
 
