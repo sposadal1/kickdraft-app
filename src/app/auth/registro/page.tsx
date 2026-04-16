@@ -29,8 +29,9 @@ export default function RegistroPage() {
       return;
     }
 
-    if (form.password.length < 8) {
-      setError('La contraseña debe tener al menos 8 caracteres');
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
+    if (!passwordRegex.test(form.password)) {
+      setError('La contraseña debe tener al menos 8 caracteres, una mayúscula, una minúscula y un número.');
       setCargando(false);
       return;
     }
@@ -49,9 +50,9 @@ export default function RegistroPage() {
     if (error) {
       console.error('Error en registro:', error.message);
       if (error.message.toLowerCase().includes('already registered') || error.message.toLowerCase().includes('already been registered')) {
-        setError('Este email ya está registrado. ¿Olvidaste tu contraseña? Usa el enlace mágico para ingresar.');
+        setError('Este email ya está registrado. Intenta iniciar sesión.');
       } else if (error.message.toLowerCase().includes('password')) {
-        setError('La contraseña no cumple los requisitos. Usa al menos 8 caracteres.');
+        setError('La contraseña no cumple los requisitos. Debe tener al menos 8 caracteres, una mayúscula, una minúscula y un número.');
       } else {
         setError(error.message);
       }
@@ -160,7 +161,7 @@ export default function RegistroPage() {
                   onChange={handleChange}
                   required
                   minLength={8}
-                  placeholder="Mínimo 8 caracteres"
+                  placeholder="Mínimo 8 caracteres, 1 mayúscula, 1 minúscula, 1 número"
                   className="w-full bg-gray-800 border border-gray-700 text-white placeholder-gray-500 rounded-xl px-4 py-3 pr-12 focus:border-verde-500 focus:outline-none transition-colors"
                 />
                 <button
