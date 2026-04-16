@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { User } from '@supabase/supabase-js';
-import { Trophy, Copy, Check, Users, ArrowLeft, Trash2 } from 'lucide-react';
+import { Copy, Check, Users, ArrowLeft, Trash2, Settings } from 'lucide-react';
 import Link from 'next/link';
 import AdSenseClassification from '@/components/ligas/AdSenseClassification';
 
@@ -25,6 +25,7 @@ interface Liga {
   nombre: string;
   codigo_invitacion: string;
   creador_id: string;
+  avatar_url?: string | null;
 }
 
 export default function DetalleLigaPage() {
@@ -56,7 +57,7 @@ export default function DetalleLigaPage() {
 
     const { data: ligaData, error: ligaError } = await supabase
       .from('ligas')
-      .select('id, nombre, codigo_invitacion, creador_id')
+      .select('id, nombre, codigo_invitacion, creador_id, avatar_url')
       .eq('id', ligaId)
       .single();
 
@@ -130,8 +131,13 @@ export default function DetalleLigaPage() {
 
       {/* Header */}
       <div className="flex items-center gap-4 mb-8">
-        <div className="w-16 h-16 rounded-full bg-verde-700 flex items-center justify-center text-white font-black text-2xl">
-          {liga.nombre.charAt(0).toUpperCase()}
+        <div className="w-16 h-16 rounded-full bg-verde-700 flex items-center justify-center text-white font-black text-2xl overflow-hidden flex-shrink-0">
+          {liga.avatar_url ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={liga.avatar_url} alt={liga.nombre} className="w-full h-full object-cover" />
+          ) : (
+            liga.nombre.charAt(0).toUpperCase()
+          )}
         </div>
         <div className="flex-1">
           <h1 className="text-3xl font-bold text-white">{liga.nombre}</h1>
@@ -141,13 +147,22 @@ export default function DetalleLigaPage() {
           </div>
         </div>
         {esCreador && (
-          <button
-            onClick={() => setMostrarConfirmEliminar(true)}
-            className="flex items-center gap-2 bg-red-900/30 hover:bg-red-900/60 text-red-400 hover:text-red-300 text-sm font-medium px-3 py-2 rounded-lg border border-red-900/50 transition-colors"
-          >
-            <Trash2 className="w-4 h-4" />
-            Eliminar liga
-          </button>
+          <div className="flex flex-col gap-2 items-end">
+            <Link
+              href={`/ligas/${ligaId}/editar`}
+              className="flex items-center gap-2 bg-verde-800/40 hover:bg-verde-800/70 text-verde-400 hover:text-verde-300 text-sm font-medium px-3 py-2 rounded-lg border border-verde-800/50 transition-colors"
+            >
+              <Settings className="w-4 h-4" />
+              Administrar Liga
+            </Link>
+            <button
+              onClick={() => setMostrarConfirmEliminar(true)}
+              className="flex items-center gap-2 bg-red-900/30 hover:bg-red-900/60 text-red-400 hover:text-red-300 text-sm font-medium px-3 py-2 rounded-lg border border-red-900/50 transition-colors"
+            >
+              <Trash2 className="w-4 h-4" />
+              Eliminar liga
+            </button>
+          </div>
         )}
       </div>
 
