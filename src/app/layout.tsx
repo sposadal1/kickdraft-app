@@ -34,7 +34,7 @@ export const metadata: Metadata = {
   },
 };
 
-const ADSENSE_PUBLISHER_ID = process.env.NEXT_PUBLIC_ADSENSE_PUBLISHER_ID;
+const ADSENSE_CLIENT = process.env.NEXT_PUBLIC_ADSENSE_CLIENT;
 
 export default function RootLayout({
   children,
@@ -44,19 +44,13 @@ export default function RootLayout({
   return (
     <html lang="es">
       <head>
-        <head>
-  {/* Google AdSense Verification */}
-  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6233133582004728" crossOrigin="anonymous"></script>
-  
-  {/* Resto del contenido de head */}
-  ...
-</head>
-        {ADSENSE_PUBLISHER_ID && (
+        {/* Google AdSense — only loaded in production when env var is set */}
+        {ADSENSE_CLIENT && process.env.NODE_ENV === 'production' && (
           <Script
             async
-            src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${ADSENSE_PUBLISHER_ID}`}
+            src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${ADSENSE_CLIENT}`}
             crossOrigin="anonymous"
-            strategy="lazyOnload"
+            strategy="afterInteractive"
           />
         )}
       </head>

@@ -91,6 +91,8 @@ NEXT_PUBLIC_SUPABASE_URL=https://tu-proyecto.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=tu-anon-key
 ```
 
+> **Google AdSense (producción):** añade `NEXT_PUBLIC_ADSENSE_CLIENT=ca-pub-XXXXXXXXXXXXXXXXX` como variable de entorno en Vercel (Settings → Environment Variables). En desarrollo local AdSense no se carga aunque la variable esté definida.
+
 ### 4. Configurar Supabase
 
 1. Crea un proyecto en [supabase.com](https://supabase.com).
