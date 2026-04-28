@@ -72,7 +72,7 @@ export default function AplicarPlusPage() {
   return (
     <div className="min-h-screen bg-black text-white px-4 py-12">
       <div className="max-w-lg mx-auto">
-        <h1 className="text-3xl font-black mb-2 text-yellow-400">Admin — Aplicar puntos Campeón &amp; Goleador</h1>
+        <h1 className="text-3xl font-black mb-2 text-yellow-400">Admin &mdash; Aplicar puntos Campeón &amp; Goleador</h1>
         <p className="text-gray-400 mb-8">
           Selecciona el campeón y el goleador oficial del torneo. Se calcularán y asignarán los +10 pts
           a todos los miembros de ligas con esta opción activa que acertaron.

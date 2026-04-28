@@ -351,12 +351,12 @@ export default function LigasPage() {
             </div>
 
             <p className="text-gray-400 text-sm mb-1">
-              La liga <strong className="text-white">{pendingJoin.ligaNombre}</strong> requiere que elijas tu campeón y goleador del torneo al unirte.
+              La liga <span className="text-white font-bold">{pendingJoin.ligaNombre}</span> requiere que elijas tu campeón y goleador del torneo al unirte.
             </p>
             <div className="flex items-start gap-2 bg-yellow-900/20 border border-yellow-800/50 rounded-xl px-3 py-2.5 mb-5">
               <AlertCircle className="w-4 h-4 text-yellow-400 flex-shrink-0 mt-0.5" />
               <p className="text-yellow-300 text-xs">
-                Esta elección <strong>no podrá modificarse</strong> después. Elige con cuidado.
+                Esta elección <span className="font-bold">no podrá modificarse</span> después. Elige con cuidado.
               </p>
             </div>
 

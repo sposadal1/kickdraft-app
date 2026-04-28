@@ -78,7 +78,7 @@ $$;
 CREATE OR REPLACE FUNCTION bloquear_update_predicciones_liga()
 RETURNS TRIGGER LANGUAGE plpgsql AS $$
 BEGIN
-  RAISE EXCEPTION 'Las predicciones de liga son inmutables y no pueden modificarse después de ser insertadas.';
+  RAISE EXCEPTION 'predicciones_liga rows are immutable and cannot be updated after insertion. / Las predicciones de liga son inmutables y no pueden modificarse.';
 END;
 $$;
 

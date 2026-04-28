@@ -228,34 +228,30 @@ async function evaluarMuroDefensivo(
   const usuariosConExacto00 = Object.keys(exacto00Map).filter((uid) => miembroIds.includes(uid));
   if (usuariosConExacto00.length === 0) return;
 
+  // Batch-fetch all finished partidos that ended 0-0 in a single query
+  const { data: partidos00 } = await supabase
+    .from('partidos')
+    .select('id')
+    .eq('goles_local', 0)
+    .eq('goles_visitante', 0)
+    .not('goles_local', 'is', null);
+
+  const partidos00Ids = new Set<number>((partidos00 ?? []).map((p: { id: number }) => p.id));
+  if (partidos00Ids.size === 0) return;
+
   for (const usuarioId of usuariosConExacto00) {
-    // Count how many times this user has gotten exact 0-0 in this liga (excluding today's new entry)
+    // Fetch all 0-0 guesses for this user in a single query
     const { data: pronosticos00 } = await supabase
       .from('pronosticos')
-      .select('partido_id, goles_local_pronosticado, goles_visitante_pronosticado, puntos_obtenidos')
-      .eq('usuario_id', usuarioId);
+      .select('partido_id')
+      .eq('usuario_id', usuarioId)
+      .eq('goles_local_pronosticado', 0)
+      .eq('goles_visitante_pronosticado', 0)
+      .in('partido_id', Array.from(partidos00Ids));
 
     if (!pronosticos00) continue;
 
-    // Count exact 0-0 hits across all partidos where the real result was 0-0
-    // We rely on the fact that puntos_obtenidos was just updated to reflect the exact score
-    // So we count pronosticos where the user guessed 0-0 and we know the real result was 0-0
-    // (determined by exacto00Map membership)
-    // We query all partidos 0-0 where this user guessed 0-0 exactly
-    let conteoExacto00 = 0;
-    for (const pron of pronosticos00) {
-      if (pron.goles_local_pronosticado === 0 && pron.goles_visitante_pronosticado === 0) {
-        // Check if the real result was also 0-0 (puntos match exact score for any phase, or check partidos table)
-        const { data: partido } = await supabase
-          .from('partidos')
-          .select('goles_local, goles_visitante')
-          .eq('id', pron.partido_id)
-          .single();
-        if (partido && partido.goles_local === 0 && partido.goles_visitante === 0) {
-          conteoExacto00++;
-        }
-      }
-    }
+    const conteoExacto00 = pronosticos00.length;
 
     // Award only when user reaches exactly the N-th 0-0 exact hit
     if (conteoExacto00 < nVeces) continue;

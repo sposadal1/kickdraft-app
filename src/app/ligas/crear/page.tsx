@@ -373,7 +373,7 @@ export default function CrearLigaPage() {
 
                 {/* Lista de rachas disponibles */}
                 {rachasActivo && (
-                  <div className="mt-3 ml-13 space-y-2 ml-[52px]">
+                  <div className="mt-3 space-y-2 ml-[52px]">
                     <p className="text-xs text-gray-400 font-medium mb-2">Selecciona las rachas a activar:</p>
                     {RACHAS_PREDEFINIDAS.map((racha) => {
                       const seleccionada = rachasSeleccionadas.find((r) => r.id === racha.id);
