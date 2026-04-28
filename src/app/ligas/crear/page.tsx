@@ -161,6 +161,7 @@ export default function CrearLigaPage() {
         nombre: r.nombre,
         descripcion: r.descripcion,
         puntos: r.puntos,
+        params: r.params ?? {},
       }));
       const { error: rachasError } = await supabase.from('rachas_config_liga').insert(rachasInsert);
       if (rachasError) {

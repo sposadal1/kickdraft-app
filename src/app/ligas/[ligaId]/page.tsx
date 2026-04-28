@@ -340,19 +340,27 @@ export default function DetalleLigaPage() {
             </div>
           ) : (
             <div className="space-y-2">
-              {misRachas.map((r) => (
-                <div key={`${r.racha_id}-${r.partido_id}`} className="flex items-center justify-between bg-orange-900/10 border border-orange-800/30 rounded-xl px-4 py-3">
-                  <div>
-                    <p className="text-sm font-medium text-white capitalize">
-                      {r.racha_id === 'lobo_solitario' ? '🐺 Lobo solitario' : r.racha_id.replace(/_/g, ' ')}
-                    </p>
-                    {r.partido_id && (
-                      <p className="text-xs text-gray-500 mt-0.5">Partido #{r.partido_id}</p>
-                    )}
+              {misRachas.map((r) => {
+                const label =
+                  r.racha_id === 'lobo_solitario'
+                    ? '🐺 Lobo Solitario'
+                    : r.racha_id === 'muro_defensivo'
+                    ? '🧱 Muro Defensivo'
+                    : r.racha_id.replace(/_/g, ' ');
+                return (
+                  <div key={`${r.racha_id}-${r.partido_id ?? 'global'}`} className="flex items-center justify-between bg-orange-900/10 border border-orange-800/30 rounded-xl px-4 py-3">
+                    <div>
+                      <p className="text-sm font-medium text-white capitalize">
+                        {label}
+                      </p>
+                      {r.partido_id && (
+                        <p className="text-xs text-gray-500 mt-0.5">Partido #{r.partido_id}</p>
+                      )}
+                    </div>
+                    <span className="font-bold text-orange-400">+{r.puntos} pts</span>
                   </div>
-                  <span className="font-bold text-orange-400">+{r.puntos} pts</span>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>

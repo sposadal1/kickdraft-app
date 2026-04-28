@@ -6,7 +6,7 @@
 ALTER TABLE ligas ADD COLUMN IF NOT EXISTS opciones_plus JSONB NOT NULL DEFAULT '{}';
 
 -- 2. Tabla de predicciones por liga (campeón y goleador del torneo)
---    Una fila por (liga, usuario). Inalterable después de insertarse.
+--    Una fila por (liga, usuario). INALTERABLE: no se permite UPDATE (ver trigger abajo).
 CREATE TABLE IF NOT EXISTS predicciones_liga (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   liga_id UUID NOT NULL REFERENCES ligas(id) ON DELETE CASCADE,
@@ -20,6 +20,7 @@ CREATE TABLE IF NOT EXISTS predicciones_liga (
 );
 
 -- 3. Tabla de configuración de rachas por liga
+--    Columna params: JSONB para parámetros extra (ej. {"n_veces":3} para muro_defensivo)
 CREATE TABLE IF NOT EXISTS rachas_config_liga (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   liga_id UUID NOT NULL REFERENCES ligas(id) ON DELETE CASCADE,
@@ -27,8 +28,12 @@ CREATE TABLE IF NOT EXISTS rachas_config_liga (
   nombre TEXT NOT NULL,
   descripcion TEXT,
   puntos INT NOT NULL DEFAULT 5,
+  params JSONB NOT NULL DEFAULT '{}',
   UNIQUE(liga_id, racha_id)
 );
+
+-- Añadir columna params si la tabla ya existía sin ella (idempotente)
+ALTER TABLE rachas_config_liga ADD COLUMN IF NOT EXISTS params JSONB NOT NULL DEFAULT '{}';
 
 -- 4. Tabla de rachas otorgadas a miembros
 CREATE TABLE IF NOT EXISTS rachas_otorgadas (
@@ -66,6 +71,22 @@ BEGIN
 END;
 $$;
 
+-- IMPORTANTE: No se crea policy de UPDATE para predicciones_liga (ni siquiera para service_role vía RLS).
+-- El trigger abajo bloquea cualquier UPDATE, protegiendo la inmutabilidad de la predicción.
+-- La función aplicarPuntosCampeonGoleador usa service_role y también es bloqueada por el trigger;
+-- en su lugar, los puntos se aplican únicamente en la tabla miembros_liga.
+CREATE OR REPLACE FUNCTION bloquear_update_predicciones_liga()
+RETURNS TRIGGER LANGUAGE plpgsql AS $$
+BEGIN
+  RAISE EXCEPTION 'Las predicciones de liga son inmutables y no pueden modificarse después de ser insertadas.';
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trigger_no_update_predicciones_liga ON predicciones_liga;
+CREATE TRIGGER trigger_no_update_predicciones_liga
+  BEFORE UPDATE ON predicciones_liga
+  FOR EACH ROW EXECUTE FUNCTION bloquear_update_predicciones_liga();
+
 -- rachas_config_liga: todos ven, sólo el creador de la liga gestiona
 DO $$
 BEGIN
@@ -88,7 +109,9 @@ BEGIN
 END;
 $$;
 
--- rachas_otorgadas: solo lectura para usuarios autenticados
+-- rachas_otorgadas: solo lectura para usuarios autenticados.
+-- Los inserts se realizan exclusivamente via service_role (servidor/admin).
+-- No se define policy de INSERT para el rol 'authenticated', lo que impide inserts desde el cliente.
 DO $$
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'rachas_otorgadas' AND policyname = 'Ver rachas otorgadas') THEN
