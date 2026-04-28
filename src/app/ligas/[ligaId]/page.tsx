@@ -4,9 +4,11 @@ import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { User } from '@supabase/supabase-js';
-import { Copy, Check, Users, ArrowLeft, Trash2, Settings } from 'lucide-react';
+import { Copy, Check, Users, ArrowLeft, Trash2, Settings, Trophy, Zap } from 'lucide-react';
 import Link from 'next/link';
 import AdSenseClassification from '@/components/ligas/AdSenseClassification';
+import { EQUIPOS } from '@/data/equipos';
+import type { OpcionesPlus } from '@/types/liga';
 
 interface Miembro {
   usuario_id: string;
@@ -26,6 +28,21 @@ interface Liga {
   codigo_invitacion: string;
   creador_id: string;
   avatar_url?: string | null;
+  opciones_plus?: OpcionesPlus;
+}
+
+interface Prediccion {
+  campeon_id: number | null;
+  goleador_nombre: string | null;
+  puntos_campeon: number;
+  puntos_goleador: number;
+}
+
+interface RachaOtorgada {
+  racha_id: string;
+  partido_id: number | null;
+  puntos: number;
+  creado_en: string;
 }
 
 export default function DetalleLigaPage() {
@@ -40,6 +57,10 @@ export default function DetalleLigaPage() {
   const [copiado, setCopiado] = useState(false);
   const [mostrarConfirmEliminar, setMostrarConfirmEliminar] = useState(false);
   const [eliminando, setEliminando] = useState(false);
+
+  // Plus features state
+  const [miPrediccion, setMiPrediccion] = useState<Prediccion | null>(null);
+  const [misRachas, setMisRachas] = useState<RachaOtorgada[]>([]);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data, error }) => {
@@ -59,7 +80,7 @@ export default function DetalleLigaPage() {
 
     const { data: ligaData, error: ligaError } = await supabase
       .from('ligas')
-      .select('id, nombre, codigo_invitacion, creador_id, avatar_url')
+      .select('id, nombre, codigo_invitacion, creador_id, avatar_url, opciones_plus')
       .eq('id', ligaId)
       .single();
 
@@ -94,6 +115,30 @@ export default function DetalleLigaPage() {
       return (b.marcadores_acertados ?? 0) - (a.marcadores_acertados ?? 0);
     });
     setMiembros(miembrosOrdenados);
+
+    // Load plus features data if needed
+    const opcionesPlus = (ligaData.opciones_plus ?? {}) as OpcionesPlus;
+
+    if (opcionesPlus.campeon_goleador) {
+      const { data: predData } = await supabase
+        .from('predicciones_liga')
+        .select('campeon_id, goleador_nombre, puntos_campeon, puntos_goleador')
+        .eq('liga_id', ligaId)
+        .eq('usuario_id', userId)
+        .single();
+      if (predData) setMiPrediccion(predData);
+    }
+
+    if (opcionesPlus.rachas?.activo) {
+      const { data: rachasData } = await supabase
+        .from('rachas_otorgadas')
+        .select('racha_id, partido_id, puntos, creado_en')
+        .eq('liga_id', ligaId)
+        .eq('usuario_id', userId)
+        .order('creado_en', { ascending: false });
+      setMisRachas((rachasData as RachaOtorgada[]) ?? []);
+    }
+
     setCargando(false);
   }
 
@@ -233,6 +278,85 @@ export default function DetalleLigaPage() {
 
       {/* Anuncio no invasivo debajo de clasificación */}
       <AdSenseClassification />
+
+      {/* Campeón y Goleador — Mi predicción */}
+      {liga.opciones_plus?.campeon_goleador && (
+        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6">
+          <div className="flex items-center gap-2 mb-4">
+            <Trophy className="w-5 h-5 text-yellow-400" />
+            <h2 className="text-xl font-bold text-white">Mi predicción</h2>
+            <span className="text-xs bg-yellow-900/30 text-yellow-400 border border-yellow-800/30 px-2 py-0.5 rounded-full ml-1">
+              Campeón &amp; Goleador
+            </span>
+          </div>
+          {miPrediccion ? (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between bg-gray-800/60 rounded-xl px-4 py-3">
+                <div>
+                  <p className="text-xs text-gray-500 mb-0.5">País Campeón</p>
+                  <p className="text-white font-semibold">
+                    {EQUIPOS.find((e) => e.id === miPrediccion.campeon_id)?.nombre ?? '—'}
+                  </p>
+                </div>
+                <div className="text-right">
+                  <p className="text-xs text-gray-500 mb-0.5">Puntos</p>
+                  <p className={`font-bold ${miPrediccion.puntos_campeon > 0 ? 'text-verde-400' : 'text-gray-600'}`}>
+                    +{miPrediccion.puntos_campeon}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center justify-between bg-gray-800/60 rounded-xl px-4 py-3">
+                <div>
+                  <p className="text-xs text-gray-500 mb-0.5">Goleador</p>
+                  <p className="text-white font-semibold">{miPrediccion.goleador_nombre ?? '—'}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-xs text-gray-500 mb-0.5">Puntos</p>
+                  <p className={`font-bold ${miPrediccion.puntos_goleador > 0 ? 'text-verde-400' : 'text-gray-600'}`}>
+                    +{miPrediccion.puntos_goleador}
+                  </p>
+                </div>
+              </div>
+              <p className="text-xs text-gray-600 text-center">Se aplica al final del torneo · No se puede cambiar</p>
+            </div>
+          ) : (
+            <p className="text-gray-500 text-sm">No hiciste una predicción al unirte a esta liga.</p>
+          )}
+        </div>
+      )}
+
+      {/* Rachas y Logros — Mis rachas */}
+      {liga.opciones_plus?.rachas?.activo && (
+        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6">
+          <div className="flex items-center gap-2 mb-4">
+            <Zap className="w-5 h-5 text-orange-400" />
+            <h2 className="text-xl font-bold text-white">Mis Rachas</h2>
+          </div>
+          {misRachas.length === 0 ? (
+            <div className="text-center py-6 text-gray-500">
+              <Zap className="w-8 h-8 mx-auto mb-2 opacity-30" />
+              <p className="text-sm">Aún no tienes rachas en esta liga.</p>
+              <p className="text-xs mt-1 text-gray-600">Las rachas se otorgan automáticamente al cumplir las condiciones.</p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {misRachas.map((r) => (
+                <div key={`${r.racha_id}-${r.partido_id}`} className="flex items-center justify-between bg-orange-900/10 border border-orange-800/30 rounded-xl px-4 py-3">
+                  <div>
+                    <p className="text-sm font-medium text-white capitalize">
+                      {r.racha_id === 'lobo_solitario' ? '🐺 Lobo solitario' : r.racha_id.replace(/_/g, ' ')}
+                    </p>
+                    {r.partido_id && (
+                      <p className="text-xs text-gray-500 mt-0.5">Partido #{r.partido_id}</p>
+                    )}
+                  </div>
+                  <span className="font-bold text-orange-400">+{r.puntos} pts</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Modal de confirmación de eliminación */}
       {mostrarConfirmEliminar && (

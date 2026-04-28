@@ -3,10 +3,11 @@
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { generarCodigoInvitacion } from '@/lib/utils';
-import { Trophy, Copy, Check, Upload } from 'lucide-react';
+import { Trophy, Copy, Check, Upload, ChevronDown, ChevronUp, Star, Zap, Plus, Minus } from 'lucide-react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import { User } from '@supabase/supabase-js';
+import { RACHAS_PREDEFINIDAS, type RachaDisponible, type OpcionesPlus } from '@/types/liga';
 
 export default function CrearLigaPage() {
   const router = useRouter();
@@ -20,6 +21,12 @@ export default function CrearLigaPage() {
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Opciones adicionales (plus)
+  const [mostrarOpciones, setMostrarOpciones] = useState(false);
+  const [campeonGoleadorActivo, setCampeonGoleadorActivo] = useState(false);
+  const [rachasActivo, setRachasActivo] = useState(false);
+  const [rachasSeleccionadas, setRachasSeleccionadas] = useState<RachaDisponible[]>([]);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data, error }) => {
@@ -58,6 +65,20 @@ export default function CrearLigaPage() {
     }
   }
 
+  function toggleRacha(racha: RachaDisponible) {
+    setRachasSeleccionadas((prev) => {
+      const existe = prev.find((r) => r.id === racha.id);
+      if (existe) return prev.filter((r) => r.id !== racha.id);
+      return [...prev, { ...racha }];
+    });
+  }
+
+  function actualizarPuntosRacha(rachaId: string, puntos: number) {
+    setRachasSeleccionadas((prev) =>
+      prev.map((r) => (r.id === rachaId ? { ...r, puntos: Math.max(1, puntos) } : r))
+    );
+  }
+
   async function handleCrear(e: React.FormEvent) {
     e.preventDefault();
     if (!nombre.trim() || !usuario) return;
@@ -65,6 +86,16 @@ export default function CrearLigaPage() {
     setError('');
 
     const codigo = generarCodigoInvitacion();
+
+    // Build opciones_plus object
+    const opciones_plus: OpcionesPlus = {};
+    if (campeonGoleadorActivo) opciones_plus.campeon_goleador = true;
+    if (rachasActivo) {
+      opciones_plus.rachas = {
+        activo: true,
+        rachas_disponibles: rachasSeleccionadas,
+      };
+    }
 
     // Upload avatar if provided
     let avatar_url: string | null = null;
@@ -98,6 +129,7 @@ export default function CrearLigaPage() {
         nombre: nombre.trim(),
         codigo_invitacion: codigo,
         creador_id: usuario.id,
+        opciones_plus,
         ...(avatar_url ? { avatar_url } : {}),
       })
       .select()
@@ -120,6 +152,21 @@ export default function CrearLigaPage() {
     }
 
     console.log('Liga creada exitosamente:', liga.id);
+
+    // If rachas are enabled, insert the selected rachas into rachas_config_liga
+    if (rachasActivo && rachasSeleccionadas.length > 0) {
+      const rachasInsert = rachasSeleccionadas.map((r) => ({
+        liga_id: liga.id,
+        racha_id: r.id,
+        nombre: r.nombre,
+        descripcion: r.descripcion,
+        puntos: r.puntos,
+      }));
+      const { error: rachasError } = await supabase.from('rachas_config_liga').insert(rachasInsert);
+      if (rachasError) {
+        console.warn('Error al guardar configuración de rachas:', rachasError.message);
+      }
+    }
 
     const { error: miembroError } = await supabase
       .from('miembros_liga')
@@ -232,6 +279,151 @@ export default function CrearLigaPage() {
             onChange={handleAvatarChange}
           />
           {avatarWarning && <p className="text-yellow-400 text-xs mt-2">{avatarWarning}</p>}
+        </div>
+
+        {/* Opciones adicionales */}
+        <div className="border border-gray-800 rounded-xl overflow-hidden">
+          <button
+            type="button"
+            onClick={() => setMostrarOpciones(!mostrarOpciones)}
+            className="w-full flex items-center justify-between px-4 py-3 bg-gray-900 hover:bg-gray-800 transition-colors text-left"
+          >
+            <div className="flex items-center gap-2">
+              <Star className="w-4 h-4 text-yellow-400" />
+              <span className="text-sm font-medium text-gray-300">Opciones adicionales (Plus)</span>
+              {(campeonGoleadorActivo || rachasActivo) && (
+                <span className="text-xs bg-verde-900/50 text-verde-400 border border-verde-800/50 px-2 py-0.5 rounded-full">
+                  {[campeonGoleadorActivo && 'Campeón', rachasActivo && 'Rachas'].filter(Boolean).join(' · ')}
+                </span>
+              )}
+            </div>
+            {mostrarOpciones ? (
+              <ChevronUp className="w-4 h-4 text-gray-500" />
+            ) : (
+              <ChevronDown className="w-4 h-4 text-gray-500" />
+            )}
+          </button>
+
+          {mostrarOpciones && (
+            <div className="px-4 py-4 bg-gray-900/50 space-y-5 border-t border-gray-800">
+              {/* Campeón y Goleador */}
+              <div>
+                <label className="flex items-start gap-3 cursor-pointer">
+                  <div className="relative mt-0.5">
+                    <input
+                      type="checkbox"
+                      checked={campeonGoleadorActivo}
+                      onChange={(e) => setCampeonGoleadorActivo(e.target.checked)}
+                      className="sr-only"
+                    />
+                    <div
+                      className={`w-10 h-6 rounded-full transition-colors ${campeonGoleadorActivo ? 'bg-verde-600' : 'bg-gray-700'}`}
+                    >
+                      <div
+                        className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${campeonGoleadorActivo ? 'translate-x-5' : 'translate-x-1'}`}
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-1.5">
+                      <Trophy className="w-4 h-4 text-yellow-400" />
+                      <span className="text-sm font-semibold text-white">Campeón y Goleador</span>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      Al unirse, los miembros deberán elegir el país campeón y el goleador del torneo.
+                      Campeón acertado = +10 pts · Goleador acertado = +10 pts (al final del torneo).
+                      No se puede cambiar después.
+                    </p>
+                  </div>
+                </label>
+              </div>
+
+              {/* Rachas y Logros */}
+              <div>
+                <label className="flex items-start gap-3 cursor-pointer">
+                  <div className="relative mt-0.5">
+                    <input
+                      type="checkbox"
+                      checked={rachasActivo}
+                      onChange={(e) => {
+                        setRachasActivo(e.target.checked);
+                        if (!e.target.checked) setRachasSeleccionadas([]);
+                      }}
+                      className="sr-only"
+                    />
+                    <div
+                      className={`w-10 h-6 rounded-full transition-colors ${rachasActivo ? 'bg-verde-600' : 'bg-gray-700'}`}
+                    >
+                      <div
+                        className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${rachasActivo ? 'translate-x-5' : 'translate-x-1'}`}
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-1.5">
+                      <Zap className="w-4 h-4 text-orange-400" />
+                      <span className="text-sm font-semibold text-white">Rachas y Logros</span>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      Otorga puntos extra por rachas especiales durante el torneo.
+                    </p>
+                  </div>
+                </label>
+
+                {/* Lista de rachas disponibles */}
+                {rachasActivo && (
+                  <div className="mt-3 ml-13 space-y-2 ml-[52px]">
+                    <p className="text-xs text-gray-400 font-medium mb-2">Selecciona las rachas a activar:</p>
+                    {RACHAS_PREDEFINIDAS.map((racha) => {
+                      const seleccionada = rachasSeleccionadas.find((r) => r.id === racha.id);
+                      return (
+                        <div
+                          key={racha.id}
+                          className={`rounded-xl border p-3 transition-colors ${seleccionada ? 'border-orange-700/60 bg-orange-900/10' : 'border-gray-800 bg-gray-900/50'}`}
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <label className="flex items-start gap-2 cursor-pointer flex-1">
+                              <input
+                                type="checkbox"
+                                checked={!!seleccionada}
+                                onChange={() => toggleRacha(racha)}
+                                className="mt-0.5 accent-orange-500"
+                              />
+                              <div>
+                                <span className="text-sm font-medium text-white">{racha.nombre}</span>
+                                <p className="text-xs text-gray-500 mt-0.5">{racha.descripcion}</p>
+                              </div>
+                            </label>
+                            {seleccionada && (
+                              <div className="flex items-center gap-1 flex-shrink-0">
+                                <button
+                                  type="button"
+                                  onClick={() => actualizarPuntosRacha(racha.id, seleccionada.puntos - 1)}
+                                  className="w-6 h-6 rounded-lg bg-gray-700 hover:bg-gray-600 flex items-center justify-center transition-colors"
+                                >
+                                  <Minus className="w-3 h-3 text-white" />
+                                </button>
+                                <span className="text-sm font-bold text-orange-400 w-8 text-center">
+                                  +{seleccionada.puntos}
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => actualizarPuntosRacha(racha.id, seleccionada.puntos + 1)}
+                                  className="w-6 h-6 rounded-lg bg-gray-700 hover:bg-gray-600 flex items-center justify-center transition-colors"
+                                >
+                                  <Plus className="w-3 h-3 text-white" />
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </div>
 
         {error && <p className="text-red-400 text-sm">{error}</p>}
