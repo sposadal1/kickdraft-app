@@ -20,7 +20,7 @@ declare global {
  */
 export default function AdSenseBanner({ adSlot, adFormat = 'auto', className = '' }: AdSenseBannerProps) {
   const adRef = useRef<HTMLModElement>(null);
-  const publisherId = process.env.NEXT_PUBLIC_ADSENSE_PUBLISHER_ID;
+  const publisherId = process.env.NEXT_PUBLIC_ADSENSE_CLIENT;
 
   useEffect(() => {
     if (!publisherId) return;
