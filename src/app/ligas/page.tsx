@@ -112,21 +112,21 @@ export default function LigasPage() {
     cargarEquiposSiHaceFalta();
   }
 
-  async function guardarPrediccionPlus(ligaId: string) {
-    if (!usuario) return;
+  async function guardarPrediccionPlus(ligaId: string): Promise<boolean> {
+    if (!usuario) return false;
 
     // Validate
     if (campeonId === '') {
       setErrorPrediccion('Selecciona el país campeón.');
-      return;
+      return false;
     }
 
-    // goleador puede ser string vacío si dataset está pendiente (permitimos, pero advertimos)
+    // goleador puede ser string vacío si dataset está pendiente (permitimos)
     if (GOLEADORES_PENDIENTE_DATASET && goleadores.length === 0) {
       // allow empty
     } else if (!goleadorNombre.trim()) {
       setErrorPrediccion('Selecciona el goleador.');
-      return;
+      return false;
     }
 
     setGuardandoPrediccion(true);
@@ -142,16 +142,14 @@ export default function LigasPage() {
       });
 
     if (predErr) {
-      // Likely: duplicate (already inserted) or RLS
       console.error('Error insert predicciones_liga:', predErr.message);
       setErrorPrediccion('No se pudo guardar tu predicción. Puede que ya exista o no tengas permisos.');
       setGuardandoPrediccion(false);
-      return;
+      return false;
     }
 
-    setMostrarModalPlus(false);
-    setLigaObjetivo(null);
     setGuardandoPrediccion(false);
+    return true;
   }
 
   async function handleUnirse() {
@@ -159,10 +157,12 @@ export default function LigasPage() {
     setCargandoUnirse(true);
     setError('');
 
+    const codigo = codigoInvitacion.trim().toUpperCase();
+
     const { data: liga, error: ligaError } = await supabase
       .from('ligas')
       .select('id, nombre, opciones_plus')
-      .eq('codigo_invitacion', codigoInvitacion.trim().toUpperCase())
+      .eq('codigo_invitacion', codigo)
       .single();
 
     if (ligaError || !liga) {
@@ -186,7 +186,6 @@ export default function LigasPage() {
 
     const requierePlus = !!liga.opciones_plus?.campeon_goleador;
 
-    // Si requiere plus, primero abrimos modal; el insert a miembros_liga se hace después
     if (requierePlus) {
       setCargandoUnirse(false);
       setMostrarUnirse(false);
@@ -194,7 +193,7 @@ export default function LigasPage() {
       abrirModalPlus({
         id: liga.id,
         nombre: liga.nombre,
-        codigo_invitacion: codigoInvitacion.trim().toUpperCase(),
+        codigo_invitacion: codigo,
         creador_id: '',
         opciones_plus: liga.opciones_plus,
       });
@@ -218,21 +217,31 @@ export default function LigasPage() {
   async function confirmarJoinConPlus() {
     if (!usuario || !ligaObjetivo) return;
 
-    // 1) Guardar predicción
-    await guardarPrediccionPlus(ligaObjetivo.id);
-    if (errorPrediccion) return;
+    setGuardandoPrediccion(true);
+    setError('');
 
-    // 2) Unirse a la liga
-    const { error: insertError } = await supabase
+    // 1) Unirse a la liga primero
+    const { error: joinErr } = await supabase
       .from('miembros_liga')
       .insert({ liga_id: ligaObjetivo.id, usuario_id: usuario.id, total_puntos: 0 });
 
-    if (insertError) {
-      console.error('Error join miembros_liga:', insertError.message);
-      setError('Error al unirte a la liga (predicción guardada).');
+    if (joinErr) {
+      console.error('Error join miembros_liga:', joinErr.message);
+      setErrorPrediccion('No se pudo completar la unión a la liga. Intenta de nuevo.');
+      setGuardandoPrediccion(false);
       return;
     }
 
+    // 2) Guardar predicción (si falla, dejamos al usuario unido pero sin predicción; puede reintentar)
+    const ok = await guardarPrediccionPlus(ligaObjetivo.id);
+    if (!ok) {
+      setGuardandoPrediccion(false);
+      return;
+    }
+
+    setMostrarModalPlus(false);
+    setLigaObjetivo(null);
+    setGuardandoPrediccion(false);
     cargarLigas(usuario);
   }
 
