@@ -1,10 +1,11 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { Plus, Hash, Trophy, LogIn, Globe } from 'lucide-react';
+import { Plus, Hash, Trophy, LogIn, Globe, X, CheckCircle2 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { User } from '@supabase/supabase-js';
+import { DATASET_GOLEADORES_PROVISIONAL, GOLEADORES_PENDIENTE_DATASET } from '@/data/goleadores';
 
 interface LigaInfo {
   id: string;
@@ -12,12 +13,21 @@ interface LigaInfo {
   codigo_invitacion: string;
   creador_id: string;
   es_global?: boolean;
+  opciones_plus?: {
+    campeon_goleador?: boolean;
+    rachas?: boolean;
+  } | null;
 }
 
 interface MiembroConLiga {
   liga_id: string;
   total_puntos: number;
   ligas: LigaInfo | LigaInfo[] | null;
+}
+
+interface EquipoOption {
+  id: number;
+  nombre: string;
 }
 
 export default function LigasPage() {
@@ -29,6 +39,17 @@ export default function LigasPage() {
   const [codigoInvitacion, setCodigoInvitacion] = useState('');
   const [cargandoUnirse, setCargandoUnirse] = useState(false);
   const [error, setError] = useState('');
+
+  // Modal Campeón/Goleador
+  const [mostrarModalPlus, setMostrarModalPlus] = useState(false);
+  const [ligaObjetivo, setLigaObjetivo] = useState<LigaInfo | null>(null);
+  const [equipos, setEquipos] = useState<EquipoOption[]>([]);
+  const [campeonId, setCampeonId] = useState<number | ''>('');
+  const [goleadorNombre, setGoleadorNombre] = useState<string>('');
+  const [guardandoPrediccion, setGuardandoPrediccion] = useState(false);
+  const [errorPrediccion, setErrorPrediccion] = useState('');
+
+  const goleadores = useMemo(() => DATASET_GOLEADORES_PROVISIONAL, []);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data, error }) => {
@@ -54,7 +75,7 @@ export default function LigasPage() {
     setCargando(true);
     const { data } = await supabase
       .from('miembros_liga')
-      .select('liga_id, total_puntos, ligas(id, nombre, codigo_invitacion, creador_id, es_global)')
+      .select('liga_id, total_puntos, ligas(id, nombre, codigo_invitacion, creador_id, es_global, opciones_plus)')
       .eq('usuario_id', user.id);
 
     const todas = (data ?? []) as MiembroConLiga[];
@@ -75,6 +96,64 @@ export default function LigasPage() {
     setCargando(false);
   }
 
+  async function cargarEquiposSiHaceFalta() {
+    if (equipos.length > 0) return;
+    const { data } = await supabase.from('equipos').select('id, nombre').order('nombre');
+    const options: EquipoOption[] = (data ?? []).map((e: any) => ({ id: e.id, nombre: e.nombre }));
+    setEquipos(options);
+  }
+
+  function abrirModalPlus(liga: LigaInfo) {
+    setLigaObjetivo(liga);
+    setCampeonId('');
+    setGoleadorNombre('');
+    setErrorPrediccion('');
+    setMostrarModalPlus(true);
+    cargarEquiposSiHaceFalta();
+  }
+
+  async function guardarPrediccionPlus(ligaId: string) {
+    if (!usuario) return;
+
+    // Validate
+    if (campeonId === '') {
+      setErrorPrediccion('Selecciona el país campeón.');
+      return;
+    }
+
+    // goleador puede ser string vacío si dataset está pendiente (permitimos, pero advertimos)
+    if (GOLEADORES_PENDIENTE_DATASET && goleadores.length === 0) {
+      // allow empty
+    } else if (!goleadorNombre.trim()) {
+      setErrorPrediccion('Selecciona el goleador.');
+      return;
+    }
+
+    setGuardandoPrediccion(true);
+    setErrorPrediccion('');
+
+    const { error: predErr } = await supabase
+      .from('predicciones_liga')
+      .insert({
+        liga_id: ligaId,
+        usuario_id: usuario.id,
+        campeon_id: campeonId,
+        goleador_nombre: goleadorNombre.trim() || null,
+      });
+
+    if (predErr) {
+      // Likely: duplicate (already inserted) or RLS
+      console.error('Error insert predicciones_liga:', predErr.message);
+      setErrorPrediccion('No se pudo guardar tu predicción. Puede que ya exista o no tengas permisos.');
+      setGuardandoPrediccion(false);
+      return;
+    }
+
+    setMostrarModalPlus(false);
+    setLigaObjetivo(null);
+    setGuardandoPrediccion(false);
+  }
+
   async function handleUnirse() {
     if (!codigoInvitacion.trim() || !usuario) return;
     setCargandoUnirse(true);
@@ -82,7 +161,7 @@ export default function LigasPage() {
 
     const { data: liga, error: ligaError } = await supabase
       .from('ligas')
-      .select('id, nombre')
+      .select('id, nombre, opciones_plus')
       .eq('codigo_invitacion', codigoInvitacion.trim().toUpperCase())
       .single();
 
@@ -105,6 +184,23 @@ export default function LigasPage() {
       return;
     }
 
+    const requierePlus = !!liga.opciones_plus?.campeon_goleador;
+
+    // Si requiere plus, primero abrimos modal; el insert a miembros_liga se hace después
+    if (requierePlus) {
+      setCargandoUnirse(false);
+      setMostrarUnirse(false);
+      setCodigoInvitacion('');
+      abrirModalPlus({
+        id: liga.id,
+        nombre: liga.nombre,
+        codigo_invitacion: codigoInvitacion.trim().toUpperCase(),
+        creador_id: '',
+        opciones_plus: liga.opciones_plus,
+      });
+      return;
+    }
+
     const { error: insertError } = await supabase
       .from('miembros_liga')
       .insert({ liga_id: liga.id, usuario_id: usuario.id, total_puntos: 0 });
@@ -117,6 +213,27 @@ export default function LigasPage() {
       cargarLigas(usuario);
     }
     setCargandoUnirse(false);
+  }
+
+  async function confirmarJoinConPlus() {
+    if (!usuario || !ligaObjetivo) return;
+
+    // 1) Guardar predicción
+    await guardarPrediccionPlus(ligaObjetivo.id);
+    if (errorPrediccion) return;
+
+    // 2) Unirse a la liga
+    const { error: insertError } = await supabase
+      .from('miembros_liga')
+      .insert({ liga_id: ligaObjetivo.id, usuario_id: usuario.id, total_puntos: 0 });
+
+    if (insertError) {
+      console.error('Error join miembros_liga:', insertError.message);
+      setError('Error al unirte a la liga (predicción guardada).');
+      return;
+    }
+
+    cargarLigas(usuario);
   }
 
   if (usuario === undefined) {
@@ -188,6 +305,83 @@ export default function LigasPage() {
             </button>
           </div>
           {error && <p className="text-red-400 text-sm mt-2">{error}</p>}
+        </div>
+      )}
+
+      {/* Modal campeon/goleador */}
+      {mostrarModalPlus && ligaObjetivo && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+          <div className="bg-gray-900 border border-gray-700 rounded-2xl p-6 max-w-md w-full shadow-xl">
+            <div className="flex items-start justify-between gap-4 mb-4">
+              <div>
+                <h2 className="text-xl font-bold text-white">Predicción extra</h2>
+                <p className="text-gray-400 text-sm">Esta liga requiere que elijas Campeón y Goleador al unirte. No podrás cambiarlo después.</p>
+              </div>
+              <button
+                onClick={() => {
+                  setMostrarModalPlus(false);
+                  setLigaObjetivo(null);
+                }}
+                className="text-gray-400 hover:text-white"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">País campeón</label>
+                <select
+                  value={campeonId}
+                  onChange={(e) => setCampeonId(e.target.value ? Number(e.target.value) : '')}
+                  className="w-full bg-gray-950 border border-gray-700 text-white rounded-xl px-3 py-2 text-sm"
+                >
+                  <option value="">Selecciona…</option>
+                  {equipos.map((eq) => (
+                    <option key={eq.id} value={eq.id}>{eq.nombre}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">Goleador</label>
+                {GOLEADORES_PENDIENTE_DATASET && goleadores.length === 0 ? (
+                  <div className="bg-yellow-900/20 border border-yellow-900/40 rounded-xl p-3 text-yellow-200 text-xs">
+                    Dataset de goleadores pendiente. Por ahora puedes dejar esto vacío y lo definimos cuando carguemos el dataset.
+                  </div>
+                ) : (
+                  <select
+                    value={goleadorNombre}
+                    onChange={(e) => setGoleadorNombre(e.target.value)}
+                    className="w-full bg-gray-950 border border-gray-700 text-white rounded-xl px-3 py-2 text-sm"
+                  >
+                    <option value="">Selecciona…</option>
+                    {goleadores.map((g) => (
+                      <option key={g} value={g}>{g}</option>
+                    ))}
+                  </select>
+                )}
+                {!GOLEADORES_PENDIENTE_DATASET && goleadores.length === 0 && (
+                  <p className="text-xs text-gray-500 mt-2">No hay goleadores disponibles.</p>
+                )}
+              </div>
+
+              {errorPrediccion && <p className="text-red-400 text-sm">{errorPrediccion}</p>}
+
+              <button
+                onClick={confirmarJoinConPlus}
+                disabled={guardandoPrediccion}
+                className="w-full bg-verde-600 hover:bg-verde-700 disabled:bg-gray-700 disabled:text-gray-500 text-white font-bold py-3 rounded-xl transition-colors"
+              >
+                {guardandoPrediccion ? 'Guardando…' : (
+                  <span className="inline-flex items-center justify-center gap-2">
+                    <CheckCircle2 className="w-5 h-5" />
+                    Confirmar y unirme
+                  </span>
+                )}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
