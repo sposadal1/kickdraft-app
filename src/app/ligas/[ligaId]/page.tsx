@@ -16,6 +16,7 @@ import {
   Trophy,
   Target,
   Star,
+  Crown,
 } from 'lucide-react';
 import AdSenseClassification from '@/components/ligas/AdSenseClassification';
 
@@ -44,6 +45,7 @@ interface Liga {
 }
 
 type PrediccionRow = {
+  usuario_id: string;
   campeon_id: number | null;
   goleador_nombre: string | null;
 };
@@ -83,6 +85,9 @@ export default function DetalleLigaPage() {
   const [puntosGoleador, setPuntosGoleador] = useState<number>(10);
 
   const plusHabilitado = !!liga?.opciones_plus?.campeon_goleador;
+
+  // Predicciones (resumen para mostrar en clasificación)
+  const [prediccionesByUser, setPrediccionesByUser] = useState<Record<string, { campeon?: string; goleador?: string }>>({});
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data, error }) => {
@@ -136,7 +141,59 @@ export default function DetalleLigaPage() {
       return (b.marcadores_acertados ?? 0) - (a.marcadores_acertados ?? 0);
     });
     setMiembros(miembrosOrdenados);
+
+    // Cargar predicciones para mostrar resumen por miembro (solo si plus)
+    if (ligaData?.opciones_plus?.campeon_goleador) {
+      await cargarPrediccionesResumen(ligaId);
+    } else {
+      setPrediccionesByUser({});
+    }
+
     setCargando(false);
+  }
+
+  async function cargarPrediccionesResumen(ligaIdParam: string) {
+    // 1) traer predicciones
+    const { data: preds, error: predsError } = await supabase
+      .from('predicciones_liga')
+      .select('usuario_id, campeon_id, goleador_nombre')
+      .eq('liga_id', ligaIdParam);
+
+    if (predsError) {
+      console.error('Error cargando predicciones_liga:', predsError.message);
+      setPrediccionesByUser({});
+      return;
+    }
+
+    const predRows = (preds ?? []) as PrediccionRow[];
+
+    // 2) resolver nombres de campeon_id (equipos)
+    const campeonIds = Array.from(new Set(predRows.map((p) => p.campeon_id).filter((v): v is number => typeof v === 'number')));
+
+    const equiposMap: Record<number, string> = {};
+    if (campeonIds.length > 0) {
+      const { data: equipos, error: equiposError } = await supabase
+        .from('equipos')
+        .select('id, nombre')
+        .in('id', campeonIds);
+
+      if (equiposError) {
+        console.error('Error cargando equipos:', equiposError.message);
+      } else {
+        for (const e of (equipos ?? []) as EquipoRow[]) {
+          equiposMap[e.id] = e.nombre;
+        }
+      }
+    }
+
+    const map: Record<string, { campeon?: string; goleador?: string }> = {};
+    for (const p of predRows) {
+      map[p.usuario_id] = {
+        campeon: p.campeon_id != null ? (equiposMap[p.campeon_id] ?? undefined) : undefined,
+        goleador: p.goleador_nombre ?? undefined,
+      };
+    }
+    setPrediccionesByUser(map);
   }
 
   async function copiarCodigo() {
@@ -207,7 +264,7 @@ export default function DetalleLigaPage() {
       return;
     }
 
-    const predRows = (preds ?? []) as Array<PrediccionRow & { usuario_id: string }>;
+    const predRows = (preds ?? []) as Array<Omit<PrediccionRow, never>>;
 
     // 3) Calcular usuarios ganadores
     const ganadorCampeon = new Set<string>();
@@ -222,7 +279,7 @@ export default function DetalleLigaPage() {
       }
     }
 
-    // 4) Aplicar puntos (con updates individuales para evitar RPC/migrations en esta iteración)
+    // 4) Aplicar puntos (updates individuales)
     const usuarios = new Set<string>([...ganadorCampeon, ...ganadorGoleador]);
 
     try {
@@ -230,7 +287,6 @@ export default function DetalleLigaPage() {
         const suma = (ganadorCampeon.has(userId) ? puntosCampeon : 0) + (ganadorGoleador.has(userId) ? puntosGoleador : 0);
         if (suma === 0) continue;
 
-        // leer puntos actuales
         const { data: miembroActual, error: miembroErr } = await supabase
           .from('miembros_liga')
           .select('total_puntos')
@@ -257,7 +313,6 @@ export default function DetalleLigaPage() {
         mensaje: `Puntos aplicados. Ganadores: campeón (${ganadorCampeon.size}) · goleador (${ganadorGoleador.size}).`,
       });
 
-      // refrescar tabla
       await cargarLiga(usuario.id);
     } catch {
       setAdminEstado({ estado: 'error', mensaje: 'Error aplicando puntos.' });
@@ -276,13 +331,11 @@ export default function DetalleLigaPage() {
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-8">
-      {/* Back */}
       <Link href="/ligas" className="inline-flex items-center gap-2 text-gray-400 hover:text-white text-sm mb-6 transition-colors">
         <ArrowLeft className="w-4 h-4" />
         Mis ligas
       </Link>
 
-      {/* Header */}
       <div className="flex items-center gap-4 mb-6">
         <div className="w-16 h-16 rounded-full bg-verde-700 flex items-center justify-center text-white font-black text-2xl overflow-hidden flex-shrink-0">
           {liga.avatar_url ? (
@@ -337,7 +390,6 @@ export default function DetalleLigaPage() {
         )}
       </div>
 
-      {/* Admin panel */}
       {esCreador && plusHabilitado && mostrarAdminPlus && (
         <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5 mb-6">
           <div className="flex items-start justify-between gap-4">
@@ -430,7 +482,6 @@ export default function DetalleLigaPage() {
         </div>
       )}
 
-      {/* Código de invitación */}
       <div className="bg-gray-900 border border-gray-800 rounded-xl p-4 mb-8">
         <p className="text-xs text-gray-500 mb-2">Código de invitación</p>
         <div className="flex items-center justify-between">
@@ -445,10 +496,22 @@ export default function DetalleLigaPage() {
         </div>
       </div>
 
-      {/* Clasificación */}
       <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6">
         <h2 className="text-xl font-bold text-white mb-1">Clasificación</h2>
         <p className="text-xs text-gray-500 mb-4">Desempate: exactos → marcadores → peso por fase</p>
+
+        {plusHabilitado && (
+          <div className="bg-gray-950 border border-gray-800 rounded-xl p-3 mb-4">
+            <div className="flex items-center gap-2 text-xs text-gray-400">
+              <Crown className="w-4 h-4 text-verde-400" />
+              Predicciones (Plus)
+              <span className="text-gray-600">·</span>
+              <span className="text-gray-500">Campeón / Goleador</span>
+            </div>
+            <p className="text-[11px] text-gray-500 mt-1">Se muestra como referencia debajo del nombre de cada miembro.</p>
+          </div>
+        )}
+
         {miembros.length === 0 ? (
           <div className="text-center py-8 text-gray-500">
             <Users className="w-10 h-10 mx-auto mb-3 opacity-30" />
@@ -461,6 +524,9 @@ export default function DetalleLigaPage() {
               const perfil = miembro.perfiles;
               const nombre = perfil ? `${perfil.nombre} ${perfil.apellido}`.trim() || perfil.email : 'Usuario';
               const esYo = miembro.usuario_id === usuario?.id;
+              const pred = prediccionesByUser[miembro.usuario_id];
+              const showPredLine = plusHabilitado && (pred?.campeon || pred?.goleador);
+
               return (
                 <div
                   key={miembro.usuario_id}
@@ -474,6 +540,15 @@ export default function DetalleLigaPage() {
                     <span className={`font-medium text-sm ${esYo ? 'text-verde-400' : 'text-white'}`}>
                       {nombre}{esYo && <span className="ml-1 text-xs text-gray-500">(tú)</span>}
                     </span>
+
+                    {showPredLine && (
+                      <div className="text-xs text-gray-400 mt-0.5">
+                        {pred?.campeon && <span className="text-verde-300">🏆 {pred.campeon}</span>}
+                        {pred?.campeon && pred?.goleador && <span className="mx-2 text-gray-600">·</span>}
+                        {pred?.goleador && <span className="text-yellow-300">🎯 {pred.goleador}</span>}
+                      </div>
+                    )}
+
                     {(miembro.exactos != null || miembro.marcadores_acertados != null) && (
                       <div className="flex gap-2 mt-0.5">
                         {miembro.exactos != null && (
@@ -493,10 +568,8 @@ export default function DetalleLigaPage() {
         )}
       </div>
 
-      {/* Anuncio no invasivo debajo de clasificación */}
       <AdSenseClassification />
 
-      {/* Modal de confirmación de eliminación */}
       {mostrarConfirmEliminar && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
           <div className="bg-gray-900 border border-gray-700 rounded-2xl p-6 max-w-sm w-full shadow-xl">
