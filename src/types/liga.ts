@@ -52,3 +52,11 @@ export interface RachaConfigLiga {
   descripcion?: string | null;
   puntos: number;
 }
+
+export interface PrediccionLiga {
+  liga_id: string;
+  usuario_id: string;
+  campeon_id: number | null;
+  goleador_nombre: string | null;
+  creado_en?: string;
+}
