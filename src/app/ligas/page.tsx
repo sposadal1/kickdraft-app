@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { Plus, Hash, Trophy, LogIn, Globe, X, CheckCircle2 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { User } from '@supabase/supabase-js';
+import { PostgrestError } from '@supabase/supabase-js';
 import { DATASET_GOLEADORES_PROVISIONAL, GOLEADORES_PENDIENTE_DATASET } from '@/data/goleadores';
 
 interface LigaInfo {
@@ -28,6 +29,15 @@ interface MiembroConLiga {
 interface EquipoOption {
   id: number;
   nombre: string;
+}
+
+interface EquipoRow {
+  id: number;
+  nombre: string;
+}
+
+function isPostgrestError(err: unknown): err is PostgrestError {
+  return typeof err === 'object' && err !== null && 'message' in err;
 }
 
 export default function LigasPage() {
@@ -98,8 +108,15 @@ export default function LigasPage() {
 
   async function cargarEquiposSiHaceFalta() {
     if (equipos.length > 0) return;
-    const { data } = await supabase.from('equipos').select('id, nombre').order('nombre');
-    const options: EquipoOption[] = (data ?? []).map((e: any) => ({ id: e.id, nombre: e.nombre }));
+
+    const { data, error } = await supabase.from('equipos').select('id, nombre').order('nombre');
+    if (error) {
+      console.error('Error cargando equipos:', error.message);
+      return;
+    }
+
+    const rows = (data ?? []) as EquipoRow[];
+    const options: EquipoOption[] = rows.map((e) => ({ id: e.id, nombre: e.nombre }));
     setEquipos(options);
   }
 
@@ -226,7 +243,8 @@ export default function LigasPage() {
       .insert({ liga_id: ligaObjetivo.id, usuario_id: usuario.id, total_puntos: 0 });
 
     if (joinErr) {
-      console.error('Error join miembros_liga:', joinErr.message);
+      const msg = isPostgrestError(joinErr) ? joinErr.message : 'Error desconocido';
+      console.error('Error join miembros_liga:', msg);
       setErrorPrediccion('No se pudo completar la unión a la liga. Intenta de nuevo.');
       setGuardandoPrediccion(false);
       return;
