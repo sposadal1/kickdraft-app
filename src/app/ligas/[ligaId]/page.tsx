@@ -17,6 +17,7 @@ import {
   Target,
   Star,
   Crown,
+  Table,
 } from 'lucide-react';
 import AdSenseClassification from '@/components/ligas/AdSenseClassification';
 
@@ -61,6 +62,13 @@ type AdminEstado =
   | { estado: 'success'; mensaje: string }
   | { estado: 'error'; mensaje: string };
 
+type PrediccionView = {
+  usuario_id: string;
+  nombre: string;
+  campeon?: string;
+  goleador?: string;
+};
+
 export default function DetalleLigaPage() {
   const params = useParams();
   const router = useRouter();
@@ -88,6 +96,9 @@ export default function DetalleLigaPage() {
 
   // Predicciones (resumen para mostrar en clasificación)
   const [prediccionesByUser, setPrediccionesByUser] = useState<Record<string, { campeon?: string; goleador?: string }>>({});
+
+  // Tabla completa de predicciones
+  const [mostrarTablaPredicciones, setMostrarTablaPredicciones] = useState(false);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data, error }) => {
@@ -142,9 +153,8 @@ export default function DetalleLigaPage() {
     });
     setMiembros(miembrosOrdenados);
 
-    // Cargar predicciones para mostrar resumen por miembro (solo si plus)
     if (ligaData?.opciones_plus?.campeon_goleador) {
-      await cargarPrediccionesResumen(ligaId);
+      await cargarPrediccionesResumen(ligaId, miembrosOrdenados);
     } else {
       setPrediccionesByUser({});
     }
@@ -152,8 +162,7 @@ export default function DetalleLigaPage() {
     setCargando(false);
   }
 
-  async function cargarPrediccionesResumen(ligaIdParam: string) {
-    // 1) traer predicciones
+  async function cargarPrediccionesResumen(ligaIdParam: string, miembrosActuales?: Miembro[]) {
     const { data: preds, error: predsError } = await supabase
       .from('predicciones_liga')
       .select('usuario_id, campeon_id, goleador_nombre')
@@ -167,7 +176,6 @@ export default function DetalleLigaPage() {
 
     const predRows = (preds ?? []) as PrediccionRow[];
 
-    // 2) resolver nombres de campeon_id (equipos)
     const campeonIds = Array.from(new Set(predRows.map((p) => p.campeon_id).filter((v): v is number => typeof v === 'number')));
 
     const equiposMap: Record<number, string> = {};
@@ -193,8 +201,31 @@ export default function DetalleLigaPage() {
         goleador: p.goleador_nombre ?? undefined,
       };
     }
+
+    // Asegurar que existan claves para miembros (evita undefineds raros en UI)
+    for (const m of (miembrosActuales ?? miembros)) {
+      if (!map[m.usuario_id]) map[m.usuario_id] = {};
+    }
+
     setPrediccionesByUser(map);
   }
+
+  const tablaPredicciones: PrediccionView[] = useMemo(() => {
+    if (!plusHabilitado) return [];
+    return miembros
+      .map((m) => {
+        const perfil = m.perfiles;
+        const nombre = perfil ? `${perfil.nombre} ${perfil.apellido}`.trim() || perfil.email : 'Usuario';
+        const pred = prediccionesByUser[m.usuario_id];
+        return {
+          usuario_id: m.usuario_id,
+          nombre,
+          campeon: pred?.campeon,
+          goleador: pred?.goleador,
+        };
+      })
+      .sort((a, b) => a.nombre.localeCompare(b.nombre));
+  }, [miembros, prediccionesByUser, plusHabilitado]);
 
   async function copiarCodigo() {
     if (!liga) return;
@@ -239,7 +270,6 @@ export default function DetalleLigaPage() {
 
     setAdminEstado({ estado: 'loading' });
 
-    // 1) Buscar equipo campeón por nombre
     const { data: equipoData, error: equipoError } = await supabase
       .from('equipos')
       .select('id, nombre')
@@ -253,7 +283,6 @@ export default function DetalleLigaPage() {
 
     const equipo = equipoData as EquipoRow;
 
-    // 2) Cargar predicciones de la liga
     const { data: preds, error: predsError } = await supabase
       .from('predicciones_liga')
       .select('usuario_id, campeon_id, goleador_nombre')
@@ -264,9 +293,8 @@ export default function DetalleLigaPage() {
       return;
     }
 
-    const predRows = (preds ?? []) as Array<Omit<PrediccionRow, never>>;
+    const predRows = (preds ?? []) as PrediccionRow[];
 
-    // 3) Calcular usuarios ganadores
     const ganadorCampeon = new Set<string>();
     const ganadorGoleador = new Set<string>();
 
@@ -279,11 +307,10 @@ export default function DetalleLigaPage() {
       }
     }
 
-    // 4) Aplicar puntos (updates individuales)
-    const usuarios = new Set<string>([...ganadorCampeon, ...ganadorGoleador]);
+    const usuariosGanadores = new Set<string>([...ganadorCampeon, ...ganadorGoleador]);
 
     try {
-      for (const userId of usuarios) {
+      for (const userId of usuariosGanadores) {
         const suma = (ganadorCampeon.has(userId) ? puntosCampeon : 0) + (ganadorGoleador.has(userId) ? puntosGoleador : 0);
         if (suma === 0) continue;
 
@@ -379,6 +406,15 @@ export default function DetalleLigaPage() {
                 Admin Plus
               </button>
             )}
+            {plusHabilitado && (
+              <button
+                onClick={() => setMostrarTablaPredicciones((v) => !v)}
+                className="flex items-center gap-2 bg-gray-800 hover:bg-gray-700 text-white text-sm font-medium px-3 py-2 rounded-lg border border-gray-700 transition-colors"
+              >
+                <Table className="w-4 h-4" />
+                Predicciones
+              </button>
+            )}
             <button
               onClick={() => setMostrarConfirmEliminar(true)}
               className="flex items-center gap-2 bg-red-900/30 hover:bg-red-900/60 text-red-400 hover:text-red-300 text-sm font-medium px-3 py-2 rounded-lg border border-red-900/50 transition-colors"
@@ -389,6 +425,44 @@ export default function DetalleLigaPage() {
           </div>
         )}
       </div>
+
+      {esCreador && plusHabilitado && mostrarTablaPredicciones && (
+        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6 mb-6">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h2 className="text-lg font-bold text-white">Tabla de predicciones (Plus)</h2>
+              <p className="text-xs text-gray-500 mt-1">Vista rápida de Campeón / Goleador por miembro.</p>
+            </div>
+            <button
+              onClick={() => setMostrarTablaPredicciones(false)}
+              className="text-xs bg-gray-800 hover:bg-gray-700 text-white px-3 py-2 rounded-lg border border-gray-700"
+            >
+              Cerrar
+            </button>
+          </div>
+
+          <div className="overflow-auto mt-4">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-left text-xs text-gray-400 border-b border-gray-800">
+                  <th className="py-2 pr-4">Miembro</th>
+                  <th className="py-2 pr-4">Campeón</th>
+                  <th className="py-2 pr-4">Goleador</th>
+                </tr>
+              </thead>
+              <tbody>
+                {tablaPredicciones.map((row) => (
+                  <tr key={row.usuario_id} className="border-b border-gray-800/50">
+                    <td className="py-2 pr-4 text-white font-medium whitespace-nowrap">{row.nombre}</td>
+                    <td className="py-2 pr-4 text-gray-200 whitespace-nowrap">{row.campeon ?? <span className="text-gray-600">—</span>}</td>
+                    <td className="py-2 pr-4 text-gray-200 whitespace-nowrap">{row.goleador ?? <span className="text-gray-600">—</span>}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       {esCreador && plusHabilitado && mostrarAdminPlus && (
         <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5 mb-6">
