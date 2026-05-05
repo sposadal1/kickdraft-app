@@ -1,11 +1,22 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { User } from '@supabase/supabase-js';
-import { Copy, Check, Users, ArrowLeft, Trash2, Settings } from 'lucide-react';
-import Link from 'next/link';
+import {
+  Copy,
+  Check,
+  Users,
+  ArrowLeft,
+  Trash2,
+  Settings,
+  ShieldCheck,
+  Trophy,
+  Target,
+  Star,
+} from 'lucide-react';
 import AdSenseClassification from '@/components/ligas/AdSenseClassification';
 
 interface Miembro {
@@ -26,7 +37,27 @@ interface Liga {
   codigo_invitacion: string;
   creador_id: string;
   avatar_url?: string | null;
+  opciones_plus?: {
+    campeon_goleador?: boolean;
+    rachas?: boolean;
+  } | null;
 }
+
+type PrediccionRow = {
+  campeon_id: number | null;
+  goleador_nombre: string | null;
+};
+
+type EquipoRow = {
+  id: number;
+  nombre: string;
+};
+
+type AdminEstado =
+  | { estado: 'idle' }
+  | { estado: 'loading' }
+  | { estado: 'success'; mensaje: string }
+  | { estado: 'error'; mensaje: string };
 
 export default function DetalleLigaPage() {
   const params = useParams();
@@ -41,6 +72,18 @@ export default function DetalleLigaPage() {
   const [mostrarConfirmEliminar, setMostrarConfirmEliminar] = useState(false);
   const [eliminando, setEliminando] = useState(false);
 
+  // Admin panel
+  const [mostrarAdminPlus, setMostrarAdminPlus] = useState(false);
+  const [adminEstado, setAdminEstado] = useState<AdminEstado>({ estado: 'idle' });
+
+  // Previews para admin
+  const [equipoCampeonNombre, setEquipoCampeonNombre] = useState<string>('');
+  const [goleadorGanadorNombre, setGoleadorGanadorNombre] = useState<string>('');
+  const [puntosCampeon, setPuntosCampeon] = useState<number>(10);
+  const [puntosGoleador, setPuntosGoleador] = useState<number>(10);
+
+  const plusHabilitado = !!liga?.opciones_plus?.campeon_goleador;
+
   useEffect(() => {
     supabase.auth.getUser().then(({ data, error }) => {
       if (error || !data.user) {
@@ -50,7 +93,6 @@ export default function DetalleLigaPage() {
       setUsuario(data.user);
       cargarLiga(data.user.id);
     });
-    // cargarLiga es estable dentro del efecto; incluirla causaría bucles infinitos
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ligaId, router]);
 
@@ -59,7 +101,7 @@ export default function DetalleLigaPage() {
 
     const { data: ligaData, error: ligaError } = await supabase
       .from('ligas')
-      .select('id, nombre, codigo_invitacion, creador_id, avatar_url')
+      .select('id, nombre, codigo_invitacion, creador_id, avatar_url, opciones_plus')
       .eq('id', ligaId)
       .single();
 
@@ -111,6 +153,117 @@ export default function DetalleLigaPage() {
     router.replace('/ligas');
   }
 
+  const esCreador = usuario?.id === liga?.creador_id;
+
+  const adminSummary = useMemo(() => {
+    if (!plusHabilitado) return null;
+    const campeonTxt = equipoCampeonNombre ? `Campeón: ${equipoCampeonNombre} (+${puntosCampeon})` : 'Campeón: (sin definir)';
+    const goleadorTxt = goleadorGanadorNombre
+      ? `Goleador: ${goleadorGanadorNombre} (+${puntosGoleador})`
+      : 'Goleador: (sin definir)';
+    return `${campeonTxt} · ${goleadorTxt}`;
+  }, [equipoCampeonNombre, goleadorGanadorNombre, puntosCampeon, puntosGoleador, plusHabilitado]);
+
+  async function aplicarPuntosPlusFinal() {
+    if (!liga || !usuario) return;
+    if (!esCreador) {
+      setAdminEstado({ estado: 'error', mensaje: 'Solo el creador puede aplicar puntos.' });
+      return;
+    }
+    if (!plusHabilitado) {
+      setAdminEstado({ estado: 'error', mensaje: 'Este modo no está habilitado en la liga.' });
+      return;
+    }
+
+    if (!equipoCampeonNombre.trim() || !goleadorGanadorNombre.trim()) {
+      setAdminEstado({ estado: 'error', mensaje: 'Debes definir campeón y goleador antes de aplicar puntos.' });
+      return;
+    }
+
+    setAdminEstado({ estado: 'loading' });
+
+    // 1) Buscar equipo campeón por nombre
+    const { data: equipoData, error: equipoError } = await supabase
+      .from('equipos')
+      .select('id, nombre')
+      .ilike('nombre', equipoCampeonNombre.trim())
+      .maybeSingle();
+
+    if (equipoError || !equipoData) {
+      setAdminEstado({ estado: 'error', mensaje: 'No pude encontrar el campeón en la tabla equipos (revisa el nombre exacto).' });
+      return;
+    }
+
+    const equipo = equipoData as EquipoRow;
+
+    // 2) Cargar predicciones de la liga
+    const { data: preds, error: predsError } = await supabase
+      .from('predicciones_liga')
+      .select('usuario_id, campeon_id, goleador_nombre')
+      .eq('liga_id', liga.id);
+
+    if (predsError) {
+      setAdminEstado({ estado: 'error', mensaje: 'Error cargando predicciones de la liga.' });
+      return;
+    }
+
+    const predRows = (preds ?? []) as Array<PrediccionRow & { usuario_id: string }>;
+
+    // 3) Calcular usuarios ganadores
+    const ganadorCampeon = new Set<string>();
+    const ganadorGoleador = new Set<string>();
+
+    for (const p of predRows) {
+      if (p.campeon_id != null && p.campeon_id === equipo.id) {
+        ganadorCampeon.add(p.usuario_id);
+      }
+      if (p.goleador_nombre && p.goleador_nombre.trim().toLowerCase() === goleadorGanadorNombre.trim().toLowerCase()) {
+        ganadorGoleador.add(p.usuario_id);
+      }
+    }
+
+    // 4) Aplicar puntos (con updates individuales para evitar RPC/migrations en esta iteración)
+    const usuarios = new Set<string>([...ganadorCampeon, ...ganadorGoleador]);
+
+    try {
+      for (const userId of usuarios) {
+        const suma = (ganadorCampeon.has(userId) ? puntosCampeon : 0) + (ganadorGoleador.has(userId) ? puntosGoleador : 0);
+        if (suma === 0) continue;
+
+        // leer puntos actuales
+        const { data: miembroActual, error: miembroErr } = await supabase
+          .from('miembros_liga')
+          .select('total_puntos')
+          .eq('liga_id', liga.id)
+          .eq('usuario_id', userId)
+          .single();
+
+        if (miembroErr || !miembroActual) continue;
+        const totalActual = (miembroActual as { total_puntos: number }).total_puntos ?? 0;
+
+        const { error: updErr } = await supabase
+          .from('miembros_liga')
+          .update({ total_puntos: totalActual + suma })
+          .eq('liga_id', liga.id)
+          .eq('usuario_id', userId);
+
+        if (updErr) {
+          console.error('Error update miembros_liga:', updErr.message);
+        }
+      }
+
+      setAdminEstado({
+        estado: 'success',
+        mensaje: `Puntos aplicados. Ganadores: campeón (${ganadorCampeon.size}) · goleador (${ganadorGoleador.size}).`,
+      });
+
+      // refrescar tabla
+      await cargarLiga(usuario.id);
+    } catch {
+      setAdminEstado({ estado: 'error', mensaje: 'Error aplicando puntos.' });
+    }
+  }
+
   if (cargando) {
     return (
       <div className="flex items-center justify-center py-20">
@@ -121,8 +274,6 @@ export default function DetalleLigaPage() {
 
   if (!liga) return null;
 
-  const esCreador = usuario?.id === liga.creador_id;
-
   return (
     <div className="max-w-3xl mx-auto px-4 py-8">
       {/* Back */}
@@ -132,7 +283,7 @@ export default function DetalleLigaPage() {
       </Link>
 
       {/* Header */}
-      <div className="flex items-center gap-4 mb-8">
+      <div className="flex items-center gap-4 mb-6">
         <div className="w-16 h-16 rounded-full bg-verde-700 flex items-center justify-center text-white font-black text-2xl overflow-hidden flex-shrink-0">
           {liga.avatar_url ? (
             // eslint-disable-next-line @next/next/no-img-element
@@ -147,6 +298,12 @@ export default function DetalleLigaPage() {
             <Users className="w-4 h-4" />
             {miembros.length} miembro{miembros.length !== 1 ? 's' : ''}
           </div>
+          {plusHabilitado && (
+            <div className="inline-flex items-center gap-2 mt-2 text-xs text-verde-300 bg-verde-900/20 border border-verde-800/40 rounded-full px-3 py-1">
+              <ShieldCheck className="w-3.5 h-3.5" />
+              Modo Plus: Campeón y Goleador
+            </div>
+          )}
         </div>
         {esCreador && (
           <div className="flex flex-col gap-2 items-end">
@@ -157,6 +314,18 @@ export default function DetalleLigaPage() {
               <Settings className="w-4 h-4" />
               Administrar Liga
             </Link>
+            {plusHabilitado && (
+              <button
+                onClick={() => {
+                  setMostrarAdminPlus((v) => !v);
+                  setAdminEstado({ estado: 'idle' });
+                }}
+                className="flex items-center gap-2 bg-gray-800 hover:bg-gray-700 text-white text-sm font-medium px-3 py-2 rounded-lg border border-gray-700 transition-colors"
+              >
+                <ShieldCheck className="w-4 h-4" />
+                Admin Plus
+              </button>
+            )}
             <button
               onClick={() => setMostrarConfirmEliminar(true)}
               className="flex items-center gap-2 bg-red-900/30 hover:bg-red-900/60 text-red-400 hover:text-red-300 text-sm font-medium px-3 py-2 rounded-lg border border-red-900/50 transition-colors"
@@ -167,6 +336,99 @@ export default function DetalleLigaPage() {
           </div>
         )}
       </div>
+
+      {/* Admin panel */}
+      {esCreador && plusHabilitado && mostrarAdminPlus && (
+        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5 mb-6">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h2 className="text-lg font-bold text-white">Aplicar puntos finales (Plus)</h2>
+              <p className="text-xs text-gray-500 mt-1">Aplica +{puntosCampeon} al campeón correcto y +{puntosGoleador} al goleador correcto. Úsalo una sola vez.</p>
+              {adminSummary && <p className="text-xs text-gray-400 mt-2">{adminSummary}</p>}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4">
+            <div className="bg-gray-950 border border-gray-800 rounded-xl p-3">
+              <label className="block text-xs text-gray-400 mb-2">Campeón (nombre exacto en equipos)</label>
+              <div className="flex items-center gap-2">
+                <Trophy className="w-4 h-4 text-verde-400" />
+                <input
+                  value={equipoCampeonNombre}
+                  onChange={(e) => setEquipoCampeonNombre(e.target.value)}
+                  placeholder="Ej: Argentina"
+                  className="w-full bg-transparent text-white placeholder-gray-600 text-sm outline-none"
+                />
+              </div>
+            </div>
+            <div className="bg-gray-950 border border-gray-800 rounded-xl p-3">
+              <label className="block text-xs text-gray-400 mb-2">Goleador (texto libre, debe coincidir)</label>
+              <div className="flex items-center gap-2">
+                <Target className="w-4 h-4 text-verde-400" />
+                <input
+                  value={goleadorGanadorNombre}
+                  onChange={(e) => setGoleadorGanadorNombre(e.target.value)}
+                  placeholder="Ej: Lionel Messi"
+                  className="w-full bg-transparent text-white placeholder-gray-600 text-sm outline-none"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
+            <div className="bg-gray-950 border border-gray-800 rounded-xl p-3">
+              <label className="block text-xs text-gray-400 mb-2">Puntos campeón</label>
+              <div className="flex items-center gap-2">
+                <Star className="w-4 h-4 text-yellow-400" />
+                <input
+                  type="number"
+                  value={puntosCampeon}
+                  onChange={(e) => setPuntosCampeon(Number(e.target.value) || 0)}
+                  className="w-full bg-transparent text-white text-sm outline-none"
+                />
+              </div>
+            </div>
+            <div className="bg-gray-950 border border-gray-800 rounded-xl p-3">
+              <label className="block text-xs text-gray-400 mb-2">Puntos goleador</label>
+              <div className="flex items-center gap-2">
+                <Star className="w-4 h-4 text-yellow-400" />
+                <input
+                  type="number"
+                  value={puntosGoleador}
+                  onChange={(e) => setPuntosGoleador(Number(e.target.value) || 0)}
+                  className="w-full bg-transparent text-white text-sm outline-none"
+                />
+              </div>
+            </div>
+          </div>
+
+          {adminEstado.estado === 'error' && (
+            <p className="text-red-400 text-sm mt-3">{adminEstado.mensaje}</p>
+          )}
+          {adminEstado.estado === 'success' && (
+            <p className="text-verde-400 text-sm mt-3">{adminEstado.mensaje}</p>
+          )}
+
+          <div className="flex flex-col md:flex-row gap-2 mt-4">
+            <button
+              onClick={aplicarPuntosPlusFinal}
+              disabled={adminEstado.estado === 'loading'}
+              className="flex-1 bg-verde-600 hover:bg-verde-700 disabled:bg-gray-700 disabled:text-gray-500 text-white font-bold py-3 rounded-xl transition-colors"
+            >
+              {adminEstado.estado === 'loading' ? 'Aplicando…' : 'Aplicar puntos (+campeón / +goleador)'}
+            </button>
+            <button
+              onClick={() => {
+                setMostrarAdminPlus(false);
+                setAdminEstado({ estado: 'idle' });
+              }}
+              className="flex-1 bg-gray-800 hover:bg-gray-700 text-white font-medium py-3 rounded-xl transition-colors"
+            >
+              Cerrar
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Código de invitación */}
       <div className="bg-gray-900 border border-gray-800 rounded-xl p-4 mb-8">
