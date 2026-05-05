@@ -3,11 +3,17 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { generarCodigoInvitacion } from '@/lib/utils';
-import { Trophy, Copy, Check, Upload, ChevronDown, ChevronUp } from 'lucide-react';
+import { Trophy, Copy, Check, Upload, ChevronDown, ChevronUp, X, Hash, CheckCircle2 } from 'lucide-react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import { User } from '@supabase/supabase-js';
 import { RACHAS_PREDEFINIDAS, type RachaId } from '@/types/liga';
+import { DATASET_GOLEADORES_PROVISIONAL, GOLEADORES_PENDIENTE_DATASET } from '@/data/goleadores';
+
+type EquipoOption = {
+  id: number;
+  nombre: string;
+};
 
 export default function CrearLigaPage() {
   const router = useRouter();
@@ -16,7 +22,7 @@ export default function CrearLigaPage() {
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [avatarWarning, setAvatarWarning] = useState('');
-  const [ligaCreada, setLigaCreada] = useState<{ nombre: string; codigo: string } | null>(null);
+  const [ligaCreada, setLigaCreada] = useState<{ id: string; nombre: string; codigo: string; requierePlus: boolean } | null>(null);
   const [copiado, setCopiado] = useState(false);
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState('');
@@ -43,6 +49,16 @@ export default function CrearLigaPage() {
       muro_defensivo: RACHAS_PREDEFINIDAS.muro_defensivo.defaultPuntos,
     };
   });
+
+  // Modal Campeón/Goleador (para creador)
+  const [mostrarModalPlus, setMostrarModalPlus] = useState(false);
+  const [equipos, setEquipos] = useState<EquipoOption[]>([]);
+  const [campeonId, setCampeonId] = useState<number | ''>('');
+  const [goleadorNombre, setGoleadorNombre] = useState<string>('');
+  const [guardandoPrediccion, setGuardandoPrediccion] = useState(false);
+  const [errorPrediccion, setErrorPrediccion] = useState('');
+
+  const goleadores = useMemo(() => DATASET_GOLEADORES_PROVISIONAL, []);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data, error }) => {
@@ -86,6 +102,61 @@ export default function CrearLigaPage() {
       ...prev,
       [id]: !prev[id],
     }));
+  }
+
+  async function cargarEquiposSiHaceFalta() {
+    if (equipos.length > 0) return;
+    const { data } = await supabase.from('equipos').select('id, nombre').order('nombre');
+    const options: EquipoOption[] = (data ?? []).map((e: any) => ({ id: e.id, nombre: e.nombre }));
+    setEquipos(options);
+  }
+
+  async function guardarPrediccionPlus(ligaId: string): Promise<boolean> {
+    if (!usuario) return false;
+
+    if (campeonId === '') {
+      setErrorPrediccion('Selecciona el país campeón.');
+      return false;
+    }
+
+    if (GOLEADORES_PENDIENTE_DATASET && goleadores.length === 0) {
+      // allow empty
+    } else if (!goleadorNombre.trim()) {
+      setErrorPrediccion('Selecciona el goleador.');
+      return false;
+    }
+
+    setGuardandoPrediccion(true);
+    setErrorPrediccion('');
+
+    const { error: predErr } = await supabase
+      .from('predicciones_liga')
+      .insert({
+        liga_id: ligaId,
+        usuario_id: usuario.id,
+        campeon_id: campeonId,
+        goleador_nombre: goleadorNombre.trim() || null,
+      });
+
+    if (predErr) {
+      console.error('Error insert predicciones_liga:', predErr.message);
+      setErrorPrediccion('No se pudo guardar tu predicción. Puede que ya exista o no tengas permisos.');
+      setGuardandoPrediccion(false);
+      return false;
+    }
+
+    setGuardandoPrediccion(false);
+    return true;
+  }
+
+  async function confirmarPrediccionCreador() {
+    if (!ligaCreada) return;
+    const ok = await guardarPrediccionPlus(ligaCreada.id);
+    if (!ok) return;
+
+    setMostrarModalPlus(false);
+    // Ir a la liga ya creada
+    router.push(`/ligas/${ligaCreada.id}`);
   }
 
   async function handleCrear(e: React.FormEvent) {
@@ -153,6 +224,7 @@ export default function CrearLigaPage() {
       return;
     }
 
+    // 1) Unir al creador como miembro
     const { error: miembroError } = await supabase
       .from('miembros_liga')
       .insert({ liga_id: liga.id, usuario_id: usuario.id, total_puntos: 0 });
@@ -164,7 +236,7 @@ export default function CrearLigaPage() {
       return;
     }
 
-    // Persist rachas config only if enabled
+    // 2) Persist rachas config only if enabled
     if (plusRachas) {
       const seleccionadas = (Object.keys(rachasSeleccionadas) as RachaId[])
         .filter((id) => rachasSeleccionadas[id]);
@@ -187,13 +259,23 @@ export default function CrearLigaPage() {
 
         if (rachasError) {
           console.error('Error guardando rachas_config_liga:', rachasError.message);
-          // Non-blocking: league exists; user can retry later from edit screen (future)
+          // Non-blocking
         }
       }
     }
 
-    setLigaCreada({ nombre: liga.nombre, codigo: liga.codigo_invitacion });
+    const requierePlus = !!opciones_plus.campeon_goleador;
+    setLigaCreada({ id: liga.id, nombre: liga.nombre, codigo: liga.codigo_invitacion, requierePlus });
     setCargando(false);
+
+    // 3) Si plus campeon/goleador está activo, pedir al creador su predicción ahora
+    if (requierePlus) {
+      setCampeonId('');
+      setGoleadorNombre('');
+      setErrorPrediccion('');
+      setMostrarModalPlus(true);
+      cargarEquiposSiHaceFalta();
+    }
   }
 
   async function copiarCodigo() {
@@ -211,34 +293,127 @@ export default function CrearLigaPage() {
 
   if (ligaCreada) {
     return (
-      <div className="max-w-md mx-auto px-4 py-12 text-center">
-        <div className="inline-flex items-center justify-center w-16 h-16 bg-verde-900/40 rounded-2xl mb-6">
-          <Trophy className="w-8 h-8 text-verde-400" />
-        </div>
-        <h1 className="text-2xl font-bold text-white mb-2">¡Liga creada!</h1>
-        <p className="text-gray-400 mb-8">
-          Comparte este código con tus amigos para que se unan a <strong className="text-white">{ligaCreada.nombre}</strong>.
-        </p>
+      <>
+        {/* Modal campeon/goleador para el creador */}
+        {mostrarModalPlus && ligaCreada.requierePlus && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+            <div className="bg-gray-900 border border-gray-700 rounded-2xl p-6 max-w-md w-full shadow-xl">
+              <div className="flex items-start justify-between gap-4 mb-4">
+                <div>
+                  <h2 className="text-xl font-bold text-white">Predicción extra</h2>
+                  <p className="text-gray-400 text-sm">Tu liga tiene Modo Plus activo. Elige Campeón y Goleador ahora. No podrás cambiarlo después.</p>
+                </div>
+                <button
+                  onClick={() => {
+                    // Permitimos cerrar: la liga ya está creada, pero el creador quedaría sin predicción.
+                    setMostrarModalPlus(false);
+                  }}
+                  className="text-gray-400 hover:text-white"
+                  aria-label="Cerrar"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
 
-        <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 mb-6">
-          <p className="text-sm text-gray-500 mb-2">Código de invitación</p>
-          <div className="text-4xl font-black text-verde-400 tracking-widest mb-4">{ligaCreada.codigo}</div>
-          <button
-            onClick={copiarCodigo}
-            className="flex items-center gap-2 mx-auto bg-gray-800 hover:bg-gray-700 text-white text-sm font-medium px-4 py-2 rounded-lg border border-gray-700 transition-colors"
-          >
-            {copiado ? <Check className="w-4 h-4 text-verde-400" /> : <Copy className="w-4 h-4" />}
-            {copiado ? '¡Copiado!' : 'Copiar código'}
-          </button>
-        </div>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">País campeón</label>
+                  <select
+                    value={campeonId}
+                    onChange={(e) => setCampeonId(e.target.value ? Number(e.target.value) : '')}
+                    className="w-full bg-gray-950 border border-gray-700 text-white rounded-xl px-3 py-2 text-sm"
+                  >
+                    <option value="">Selecciona…</option>
+                    {equipos.map((eq) => (
+                      <option key={eq.id} value={eq.id}>{eq.nombre}</option>
+                    ))}
+                  </select>
+                </div>
 
-        <Link
-          href="/ligas"
-          className="text-verde-400 hover:text-verde-300 text-sm font-medium transition-colors"
-        >
-          Ver mis ligas
-        </Link>
-      </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">Goleador</label>
+                  {GOLEADORES_PENDIENTE_DATASET && goleadores.length === 0 ? (
+                    <div className="bg-yellow-900/20 border border-yellow-900/40 rounded-xl p-3 text-yellow-200 text-xs">
+                      Dataset de goleadores pendiente. Por ahora puedes dejar esto vacío y lo definimos cuando carguemos el dataset.
+                    </div>
+                  ) : (
+                    <select
+                      value={goleadorNombre}
+                      onChange={(e) => setGoleadorNombre(e.target.value)}
+                      className="w-full bg-gray-950 border border-gray-700 text-white rounded-xl px-3 py-2 text-sm"
+                    >
+                      <option value="">Selecciona…</option>
+                      {goleadores.map((g) => (
+                        <option key={g} value={g}>{g}</option>
+                      ))}
+                    </select>
+                  )}
+                  {!GOLEADORES_PENDIENTE_DATASET && goleadores.length === 0 && (
+                    <p className="text-xs text-gray-500 mt-2">No hay goleadores disponibles.</p>
+                  )}
+                </div>
+
+                {errorPrediccion && <p className="text-red-400 text-sm">{errorPrediccion}</p>}
+
+                <button
+                  onClick={confirmarPrediccionCreador}
+                  disabled={guardandoPrediccion}
+                  className="w-full bg-verde-600 hover:bg-verde-700 disabled:bg-gray-700 disabled:text-gray-500 text-white font-bold py-3 rounded-xl transition-colors"
+                >
+                  {guardandoPrediccion ? 'Guardando…' : (
+                    <span className="inline-flex items-center justify-center gap-2">
+                      <CheckCircle2 className="w-5 h-5" />
+                      Confirmar
+                    </span>
+                  )}
+                </button>
+
+                <div className="text-xs text-gray-500">
+                  <span className="inline-flex items-center gap-1"><Hash className="w-3 h-3" />Código:</span>
+                  <span className="ml-2 font-mono text-gray-300">{ligaCreada.codigo}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        <div className="max-w-md mx-auto px-4 py-12 text-center">
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-verde-900/40 rounded-2xl mb-6">
+            <Trophy className="w-8 h-8 text-verde-400" />
+          </div>
+          <h1 className="text-2xl font-bold text-white mb-2">¡Liga creada!</h1>
+          <p className="text-gray-400 mb-8">
+            Comparte este código con tus amigos para que se unan a <strong className="text-white">{ligaCreada.nombre}</strong>.
+          </p>
+
+          <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 mb-6">
+            <p className="text-sm text-gray-500 mb-2">Código de invitación</p>
+            <div className="text-4xl font-black text-verde-400 tracking-widest mb-4">{ligaCreada.codigo}</div>
+            <button
+              onClick={copiarCodigo}
+              className="flex items-center gap-2 mx-auto bg-gray-800 hover:bg-gray-700 text-white text-sm font-medium px-4 py-2 rounded-lg border border-gray-700 transition-colors"
+            >
+              {copiado ? <Check className="w-4 h-4 text-verde-400" /> : <Copy className="w-4 h-4" />}
+              {copiado ? '¡Copiado!' : 'Copiar código'}
+            </button>
+          </div>
+
+          <div className="flex flex-col gap-3">
+            <Link
+              href="/ligas"
+              className="text-verde-400 hover:text-verde-300 text-sm font-medium transition-colors"
+            >
+              Ver mis ligas
+            </Link>
+            <Link
+              href={`/ligas/${ligaCreada.id}`}
+              className="text-gray-300 hover:text-white text-sm font-medium transition-colors"
+            >
+              Ir a la liga
+            </Link>
+          </div>
+        </div>
+      </>
     );
   }
 
