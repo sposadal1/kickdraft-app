@@ -170,7 +170,7 @@ export default function DetalleLigaPage() {
     // 2) resolver nombres de campeon_id (equipos)
     const campeonIds = Array.from(new Set(predRows.map((p) => p.campeon_id).filter((v): v is number => typeof v === 'number')));
 
-    let equiposMap: Record<number, string> = {};
+    const equiposMap: Record<number, string> = {};
     if (campeonIds.length > 0) {
       const { data: equipos, error: equiposError } = await supabase
         .from('equipos')
