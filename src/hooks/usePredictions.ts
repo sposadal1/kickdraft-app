@@ -17,7 +17,7 @@ interface PredictionData {
 
   advice?: string;
 
-  comparison?: any;
+  comparison?: Record<string, unknown>;
 
   fallback?: boolean;
 }
