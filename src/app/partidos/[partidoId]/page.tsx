@@ -67,19 +67,19 @@ export default async function DetallePartidoPage({ params }: Props) {
           <div className="text-center">
             {partido.estado === 'finalizado' ? (
               <div className="text-5xl font-black text-white">
-                {partido.golesLocal} - {partido.golesVisitante}
+                {partido.marcadorLocal} - {partido.marcadorVisitante}
               </div>
             ) : (
               <div className="text-3xl font-bold text-gray-500">VS</div>
             )}
             <div className={`mt-2 text-xs font-semibold px-3 py-1 rounded-full ${
-              partido.estado === 'en_vivo'
+              partido.estado === 'en-vivo'
                 ? 'bg-red-600 text-white'
                 : partido.estado === 'finalizado'
                 ? 'bg-verde-800 text-verde-200'
                 : 'bg-gray-700 text-gray-300'
             }`}>
-              {partido.estado === 'programado' ? 'Programado' : partido.estado === 'en_vivo' ? '● En Vivo' : 'Finalizado'}
+              {partido.estado === 'programado' ? 'Programado' : partido.estado === 'en-vivo' ? '● En Vivo' : 'Finalizado'}
             </div>
           </div>
 

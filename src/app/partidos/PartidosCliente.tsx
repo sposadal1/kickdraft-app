@@ -5,9 +5,9 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { PARTIDOS } from '@/data/partidos';
 import { EQUIPOS, GRUPOS } from '@/data/equipos';
 import TarjetaPartido from '@/components/partidos/TarjetaPartido';
-import { FasePartido } from '@/types/partido';
+import { Partido } from '@/types/partido';
 
-const FASES: { valor: FasePartido | 'todos'; label: string }[] = [
+const FASES: { valor: Partido['fase'] | 'todos'; label: string }[] = [
   { valor: 'todos', label: 'Todos' },
   { valor: 'grupos', label: 'Grupos' },
   { valor: 'dieciseisavos', label: 'Dieciseisavos' },
@@ -22,13 +22,13 @@ export default function PartidosCliente() {
   const searchParams = useSearchParams();
 
   const grupoParam = searchParams.get('group') ?? 'todos';
-  const faseParam = (searchParams.get('fase') ?? 'todos') as FasePartido | 'todos';
+  const faseParam = (searchParams.get('fase') ?? 'todos') as Partido['fase'] | 'todos';
 
   const [grupoActivo, setGrupoActivo] = useState<string>(grupoParam);
-  const [faseActiva, setFaseActiva] = useState<FasePartido | 'todos'>(faseParam);
+  const [faseActiva, setFaseActiva] = useState<Partido['fase'] | 'todos'>(faseParam);
 
   const buildUrl = useCallback(
-    (nuevoGrupo: string, nuevaFase: FasePartido | 'todos') => {
+    (nuevoGrupo: string, nuevaFase: Partido['fase'] | 'todos') => {
       const params = new URLSearchParams();
       if (nuevoGrupo !== 'todos') params.set('group', nuevoGrupo);
       if (nuevaFase !== 'todos') params.set('fase', nuevaFase);
@@ -47,7 +47,7 @@ export default function PartidosCliente() {
     router.push(buildUrl(next, nextFase), { scroll: false });
   }
 
-  function handleFase(fase: FasePartido | 'todos') {
+  function handleFase(fase: Partido['fase'] | 'todos') {
     setFaseActiva(fase);
     // When a fase filter is selected (non-grupos), clear group
     const nextGrupo = fase !== 'todos' && fase !== 'grupos' ? 'todos' : grupoActivo;
@@ -58,7 +58,7 @@ export default function PartidosCliente() {
   // Sync state when URL changes (e.g. browser back/forward)
   useEffect(() => {
     setGrupoActivo(searchParams.get('group') ?? 'todos');
-    setFaseActiva((searchParams.get('fase') ?? 'todos') as FasePartido | 'todos');
+    setFaseActiva((searchParams.get('fase') ?? 'todos') as Partido['fase'] | 'todos');
   }, [searchParams]);
 
   const partidosFiltrados = PARTIDOS.filter((partido) => {

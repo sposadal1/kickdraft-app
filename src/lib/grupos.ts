@@ -43,11 +43,18 @@ export function calcularTablaGrupo(
     const local = tabla.find((f) => f.equipo.id === partido.equipoLocalId);
     const visitante = tabla.find((f) => f.equipo.id === partido.equipoVisitanteId);
 
-    if (!local || !visitante) continue;
-    if (partido.golesLocal === undefined || partido.golesVisitante === undefined) continue;
+    // Skip if match doesn't have a final score or teams aren't in this group
+    if (
+      partido.marcadorLocal === undefined ||
+      partido.marcadorVisitante === undefined ||
+      !local ||
+      !visitante
+    ) {
+      continue;
+    }
 
-    const gl = partido.golesLocal;
-    const gv = partido.golesVisitante;
+    const gl = partido.marcadorLocal as number;
+    const gv = partido.marcadorVisitante as number;
 
     local.jugados++;
     visitante.jugados++;

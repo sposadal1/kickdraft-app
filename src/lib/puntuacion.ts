@@ -8,7 +8,7 @@ const PUNTOS_POR_FASE: Record<FasePartido, { resultado: number; exacto: number }
   octavos:       { resultado: 3, exacto: 6 },
   cuartos:       { resultado: 4, exacto: 8 },
   semifinal:     { resultado: 5, exacto: 10 },
-  tercer_cuarto: { resultado: 6, exacto: 12 },
+  'tercer-puesto': { resultado: 6, exacto: 12 },
   final:         { resultado: 7, exacto: 14 },
 };
 
@@ -19,7 +19,7 @@ export const PESO_FASE: Record<FasePartido, number> = {
   octavos:       3,
   cuartos:       4,
   semifinal:     5,
-  tercer_cuarto: 6,
+  'tercer-puesto': 6,
   final:         7,
 };
 

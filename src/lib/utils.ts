@@ -35,7 +35,7 @@ export function obtenerNombreFase(fase: FasePartido): string {
     octavos: 'Octavos de Final',
     cuartos: 'Cuartos de Final',
     semifinal: 'Semifinal',
-    tercer_cuarto: 'Tercer y Cuarto Lugar',
+      'tercer-puesto': 'Tercer y Cuarto Lugar',
     final: 'Final',
   };
   return nombres[fase];

@@ -1,10 +1,10 @@
 import { supabase } from '@/lib/supabase';
 import { calcularPuntos } from '@/lib/puntuacion';
-import type { FasePartido } from '@/types/partido';
+import type { Partido } from '@/types/partido';
 
 export async function actualizarPuntosPartido(
   partidoId: number,
-  fase: FasePartido,
+  fase: Partido['fase'],
   golesLocalReal: number,
   golesVisitanteReal: number
 ): Promise<{ actualizados: number; errores: number }> {

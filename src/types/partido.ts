@@ -32,3 +32,5 @@ export interface Partido {
   marcadorLocal?: number;
   marcadorVisitante?: number;
 }
+
+export type FasePartido = Partido['fase'];

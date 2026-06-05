@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { actualizarPuntosPartido } from '@/lib/actualizarPuntos';
-import type { Partido, FasePartido } from '@/types/partido';
+import type { Partido } from '@/types/partido';
 import { obtenerNombreFase, formatearFecha } from '@/lib/utils';
 
 const ADMIN_EMAIL = process.env.NEXT_PUBLIC_ADMIN_EMAIL;
@@ -55,7 +55,7 @@ export default function ActualizarPartidoPage() {
     try {
       const res = await actualizarPuntosPartido(
         partido.id,
-        partido.fase as FasePartido,
+        partido.fase as Partido['fase'],
         Number(golesLocal),
         Number(golesVisitante)
       );
