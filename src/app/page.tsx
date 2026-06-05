@@ -1,21 +1,30 @@
 import Link from 'next/link';
 import { Trophy, Users, Star, ChevronRight, Globe } from 'lucide-react';
-
+import Image from 'next/image';
 export default function HomePage() {
   return (
     <div className="bg-black text-white">
       {/* Hero */}
       <section className="relative overflow-hidden py-20 px-4">
         <div className="absolute inset-0 bg-gradient-to-br from-verde-900/40 via-black to-black" />
-        <div className="relative max-w-4xl mx-auto text-center">
-          <div className="inline-flex items-center gap-2 bg-verde-900/50 border border-verde-700 text-verde-400 text-sm font-medium px-4 py-2 rounded-full mb-6">
-            <Trophy className="w-4 h-4" />
-            Mundial FIFA 2026
-          </div>
-          <h1 className="text-5xl md:text-7xl font-black mb-6 leading-tight">
-            ¡Demuestra que sabes{' '}
-            <span className="text-verde-500">de fútbol!</span>
-          </h1>
+        <div className="relative max-w-5xl mx-auto text-center">
+          <div className="flex justify-center mb-4">
+            <Image
+            src="/worldcup26-logo.jpeg"
+            alt="Mundial FIFA 2026"
+            width={320}
+            height={320}
+            priority
+            className="object-contain"
+  />
+</div>
+<h1 className="text-5xl md:text-5xl font-black mb-10 leading-tight">
+  ¡Vive la experiencia del{' '}
+  <span className="text-verde-500">
+    fútbol mundial
+  </span>{' '}
+  con KickDraft!
+</h1>
           <p className="text-xl text-gray-400 max-w-2xl mx-auto mb-10">
             Crea tu polla mundialista, predice los resultados y compite con amigos en{' '}
             <strong className="text-white">Kickdraft</strong>. El torneo de pronósticos más emocionante del Mundial 2026.

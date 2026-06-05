@@ -2,7 +2,7 @@ import { Partido } from '@/types/partido';
 
 export const PARTIDOS: Partido[] = [
   // Jornada 1
-  { id: 1, numeroPartido: 1, fase: 'grupos', grupoId: 'A', equipoLocalId: 1, equipoVisitanteId: 2, fechaHoraUTC: '2026-06-11T22:00:00Z', estadio: 'Estadio Azteca', ciudad: 'Ciudad de México', pais: 'México', estado: 'programado' },
+  { id: 1, numeroPartido: 1, fase: 'grupos', grupoId: 'A', equipoLocalId: 1, equipoVisitanteId: 2, apiFixtureId: 1208715, fechaHoraUTC: '2026-06-11T22:00:00Z', estadio: 'Estadio Azteca', ciudad: 'Ciudad de México', pais: 'México', estado: 'programado' },
   { id: 2, numeroPartido: 2, fase: 'grupos', grupoId: 'A', equipoLocalId: 3, equipoVisitanteId: 4, fechaHoraUTC: '2026-06-12T01:00:00Z', estadio: 'SoFi Stadium', ciudad: 'Los Ángeles', pais: 'Estados Unidos', estado: 'programado' },
   { id: 3, numeroPartido: 3, fase: 'grupos', grupoId: 'B', equipoLocalId: 5, equipoVisitanteId: 6, fechaHoraUTC: '2026-06-12T18:00:00Z', estadio: 'BMO Field', ciudad: 'Toronto', pais: 'Canadá', estado: 'programado' },
   { id: 4, numeroPartido: 4, fase: 'grupos', grupoId: 'B', equipoLocalId: 7, equipoVisitanteId: 8, fechaHoraUTC: '2026-06-12T22:00:00Z', estadio: 'MetLife Stadium', ciudad: 'Nueva York/Nueva Jersey', pais: 'Estados Unidos', estado: 'programado' },

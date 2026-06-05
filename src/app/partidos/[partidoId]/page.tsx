@@ -1,7 +1,6 @@
 import { notFound } from 'next/navigation';
 import { PARTIDOS } from '@/data/partidos';
 import { EQUIPOS } from '@/data/equipos';
-import { PROBABILIDADES } from '@/data/probabilidades';
 import { HISTORIAL } from '@/data/historial';
 import { ALINEACIONES } from '@/data/alineaciones';
 import { calcularTablaGrupo } from '@/lib/grupos';
@@ -31,7 +30,6 @@ export default async function DetallePartidoPage({ params }: Props) {
     ? calcularTablaGrupo(partido.grupoId, PARTIDOS, EQUIPOS)
     : null;
 
-  const probabilidades = PROBABILIDADES.find((p) => p.partidoId === partido.id);
   const historialRaw = HISTORIAL.find(
     (h) =>
       (h.equipoLocalId === partido.equipoLocalId && h.equipoVisitanteId === partido.equipoVisitanteId) ||
@@ -113,16 +111,11 @@ export default async function DetallePartidoPage({ params }: Props) {
           <TablaGrupo grupoId={partido.grupoId} tabla={tablaGrupo} />
         </div>
       )}
-
-      {/* Probabilidades */}
-      {probabilidades && (
-        <SeccionProbabilidades
-          probabilidades={probabilidades}
-          nombreLocal={equipoLocal.nombreCorto}
-          nombreVisitante={equipoVisitante.nombreCorto}
-        />
-      )}
-
+      <SeccionProbabilidades
+        fixtureId={partido.apiFixtureId}
+        nombreLocal={equipoLocal.nombreCorto}
+        nombreVisitante={equipoVisitante.nombreCorto}
+      />
       {/* Estadísticas */}
       <SeccionEstadisticas
         estado={partido.estado}
