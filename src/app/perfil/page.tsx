@@ -20,19 +20,36 @@ const [perfil, setPerfil] = useState<Perfil | null>(null);
     cargarPerfil();
   }, []);
 
-  async function cargarPerfil() {
-    const { data: auth } = await supabase.auth.getUser();
+async function cargarPerfil() {
+  try {
+    const { data: auth, error: authError } =
+      await supabase.auth.getUser();
 
-    if (!auth.user) return;
+    console.log('AUTH', auth);
+    console.log('AUTH ERROR', authError);
 
-    const { data } = await supabase
+    if (!auth.user) {
+      alert('No hay usuario autenticado');
+      return;
+    }
+
+    const { data, error } = await supabase
       .from('perfiles')
       .select('*')
       .eq('id', auth.user.id)
       .single();
 
+    console.log('PERFIL DATA', data);
+    console.log('PERFIL ERROR', error);
+
+    alert(JSON.stringify({ data, error }, null, 2));
+
     setPerfil(data);
+  } catch (e) {
+    console.error(e);
+    alert(String(e));
   }
+}
 
   if (!perfil) {
     return (
@@ -45,6 +62,7 @@ const [perfil, setPerfil] = useState<Perfil | null>(null);
   const nombre =
     perfil.nombre_visible ||
     `${perfil.nombre} ${perfil.apellido}`;
+    alert(JSON.stringify(perfil, null, 2));
 
   return (
     <div className="max-w-3xl mx-auto p-8">
