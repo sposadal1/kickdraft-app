@@ -42,8 +42,6 @@ async function cargarPerfil() {
     console.log('PERFIL DATA', data);
     console.log('PERFIL ERROR', error);
 
-    alert(JSON.stringify({ data, error }, null, 2));
-
     setPerfil(data);
   } catch (e) {
     console.error(e);
