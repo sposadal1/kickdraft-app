@@ -1,56 +1,56 @@
 'use client';
 
 import Link from 'next/link';
-import { useState, useEffect, useRef } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-import { Trophy, UserCircle, CalendarDays, CheckSquare, X } from 'lucide-react';
+import { Trophy, CalendarDays, CheckSquare } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import type { User } from '@supabase/supabase-js';
+import type { PerfilUsuario } from '@/lib/profile';
+import { getNombreVisible } from '@/lib/profile';
+import ProfileDropdown from '@/components/profile/ProfileDropdown';
 
 export default function Navbar() {
   const router = useRouter();
   const pathname = usePathname();
   const [usuario, setUsuario] = useState<User | null>(null);
-  const [nombreUsuario, setNombreUsuario] = useState<string | null>(null);
-  const [perfilAbierto, setPerfilAbierto] = useState(false);
-  const perfilRef = useRef<HTMLDivElement>(null);
+  const [perfil, setPerfil] = useState<PerfilUsuario | null>(null);
 
-  async function fetchNombre(userId: string) {
+  async function fetchPerfil(userId: string) {
     const { data, error } = await supabase
       .from('perfiles')
-      .select('nombre, apellido')
+      .select('id, nombre, apellido, email, nombre_visible, avatar_url, creado_en')
       .eq('id', userId)
       .single();
+
     if (error) {
       console.error('Navbar: error al cargar perfil:', error.message);
       return;
     }
-    if (data) {
-      const nombre = `${data.nombre ?? ''} ${data.apellido ?? ''}`.trim();
-      setNombreUsuario(nombre || null);
-    }
+
+    setPerfil(data as PerfilUsuario);
   }
 
   async function repararPerfil(user: User) {
-    // Check if the user has a profile row
-    const { data: perfil, error: perfilError } = await supabase
+    const { data: perfilExistente, error: perfilError } = await supabase
       .from('perfiles')
       .select('id')
       .eq('id', user.id)
       .single();
 
-    // PGRST116 = "Row not found" — only upsert when the row is genuinely missing
-    if (perfilError?.code === 'PGRST116' || (!perfilError && !perfil)) {
+    if (perfilError?.code === 'PGRST116' || (!perfilError && !perfilExistente)) {
       const meta = user.user_metadata ?? {};
+      const nombre = meta.nombre || meta.full_name?.split(' ')[0] || 'Usuario';
+      const apellido = meta.apellido || (meta.full_name?.split(' ').slice(1).join(' ') ?? '');
       await supabase.from('perfiles').upsert({
         id: user.id,
         email: user.email,
-        nombre: meta.nombre || meta.full_name?.split(' ')[0] || 'Usuario',
-        apellido: meta.apellido || (meta.full_name?.split(' ').slice(1).join(' ') ?? ''),
+        nombre,
+        apellido,
+        nombre_visible: `${nombre} ${apellido}`.trim(),
       });
     }
 
-    // Ensure the user is a member of the global league
     const { data: ligaGlobal } = await supabase
       .from('ligas')
       .select('id')
@@ -79,34 +79,24 @@ export default function Navbar() {
     supabase.auth.getUser().then(({ data, error }) => {
       if (!error && data.user) {
         setUsuario(data.user);
-        fetchNombre(data.user.id);
+        fetchPerfil(data.user.id);
         repararPerfil(data.user);
       }
     });
+
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session?.user) {
         setUsuario(session.user);
-        fetchNombre(session.user.id);
+        fetchPerfil(session.user.id);
         repararPerfil(session.user);
       } else {
         setUsuario(null);
-        setNombreUsuario(null);
+        setPerfil(null);
       }
     });
+
     return () => listener.subscription.unsubscribe();
   }, []);
-
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (perfilRef.current && !perfilRef.current.contains(event.target as Node)) {
-        setPerfilAbierto(false);
-      }
-    }
-    if (perfilAbierto) {
-      document.addEventListener('mousedown', handleClickOutside);
-    }
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [perfilAbierto]);
 
   async function handleLogout() {
     await supabase.auth.signOut();
@@ -114,18 +104,21 @@ export default function Navbar() {
     router.refresh();
   }
 
+  const nombreUsuario = useMemo(
+    () => getNombreVisible(perfil, usuario?.email),
+    [perfil, usuario?.email]
+  );
+
   return (
     <>
       <nav className="bg-black text-white shadow-lg">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center h-16">
-            {/* Area 1: Logo */}
             <Link href="/" className="flex items-center gap-2 font-bold text-xl text-verde-500 flex-none">
               <Trophy className="w-6 h-6" />
               Kickdraft
             </Link>
 
-            {/* Links escritorio (ocultos en móvil) */}
             <div className="hidden md:flex items-center gap-6 ml-8">
               <Link href="/partidos" className="hover:text-verde-400 transition-colors">
                 Partidos
@@ -138,21 +131,16 @@ export default function Navbar() {
               </Link>
             </div>
 
-            {/* Espaciador */}
             <div className="flex-1" />
 
-            {/* Botón login / avatar - escritorio */}
             <div className="hidden md:flex items-center gap-4">
               {usuario ? (
-                <>
-                  <span className="text-gray-300 text-sm">{nombreUsuario ?? usuario.email}</span>
-                  <button
-                    onClick={handleLogout}
-                    className="bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
-                  >
-                    Cerrar sesión
-                  </button>
-                </>
+                <ProfileDropdown
+                  name={nombreUsuario}
+                  email={usuario.email}
+                  avatarUrl={perfil?.avatar_url}
+                  onLogout={handleLogout}
+                />
               ) : (
                 <Link
                   href="/auth/login"
@@ -163,62 +151,28 @@ export default function Navbar() {
               )}
             </div>
 
-            {/* Area 2 y 3: Nombre + Icono de perfil (solo móvil) */}
             <div className="flex md:hidden items-center gap-2">
-              {/* Area 2: Nombre del usuario (espacio izquierdo reservado para futuros anuncios) */}
-              {nombreUsuario && (
-                <span className="text-gray-300 text-xs truncate max-w-[110px]">{nombreUsuario}</span>
-              )}
-
-              {/* Area 3: Icono de perfil con dropdown */}
-              <div className="relative" ref={perfilRef}>
-                <button
-                  className="p-1"
-                  onClick={() => setPerfilAbierto(!perfilAbierto)}
-                  aria-label="Perfil"
+              {usuario ? (
+                <ProfileDropdown
+                  name={nombreUsuario}
+                  email={usuario.email}
+                  avatarUrl={perfil?.avatar_url}
+                  onLogout={handleLogout}
+                  compact
+                />
+              ) : (
+                <Link
+                  href="/auth/login"
+                  className="bg-verde-600 hover:bg-verde-700 text-white px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
                 >
-                  <UserCircle className="w-7 h-7 text-gray-300" />
-                </button>
-
-                {perfilAbierto && (
-                  <div className="absolute right-0 top-full mt-2 w-56 bg-gray-900 border border-gray-700 rounded-xl shadow-xl z-50 p-3 space-y-2">
-                    <button
-                      className="absolute top-2 right-2 text-gray-500 hover:text-white"
-                      onClick={() => setPerfilAbierto(false)}
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                    {usuario ? (
-                      <>
-                        <div className="pb-2 border-b border-gray-700 pr-6">
-                          <p className="text-white font-semibold text-sm">{nombreUsuario ?? 'Usuario'}</p>
-                          <p className="text-gray-400 text-xs truncate">{usuario.email}</p>
-                        </div>
-                        <button
-                          onClick={async () => { await handleLogout(); setPerfilAbierto(false); }}
-                          className="w-full text-left text-red-400 text-sm font-medium py-1"
-                        >
-                          Cerrar sesión
-                        </button>
-                      </>
-                    ) : (
-                      <Link
-                        href="/auth/login"
-                        className="block text-verde-400 text-sm font-medium py-1"
-                        onClick={() => setPerfilAbierto(false)}
-                      >
-                        Iniciar sesión
-                      </Link>
-                    )}
-                  </div>
-                )}
-              </div>
+                  Iniciar sesión
+                </Link>
+              )}
             </div>
           </div>
         </div>
       </nav>
 
-      {/* Area 5: Barra de navegación inferior (solo móvil) */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-black border-t border-gray-800 z-40">
         <div className="flex items-center justify-around h-16">
           <Link

@@ -6,6 +6,8 @@ import { supabase } from '@/lib/supabase';
 import { User } from '@supabase/supabase-js';
 import { ArrowLeft, Upload, Save, UserX, Check, Trophy } from 'lucide-react';
 import Link from 'next/link';
+import Avatar from '@/components/profile/Avatar';
+import { getNombreVisible } from '@/lib/profile';
 
 interface Miembro {
   usuario_id: string;
@@ -13,6 +15,8 @@ interface Miembro {
   perfiles: {
     nombre: string;
     apellido: string;
+    nombre_visible?: string;
+    avatar_url?: string;
     email: string;
   } | null;
 }
@@ -92,7 +96,7 @@ export default function EditarLigaPage() {
 
     const { data: miembrosData } = await supabase
       .from('miembros_liga')
-      .select('usuario_id, total_puntos, perfiles(nombre, apellido, email)')
+      .select('usuario_id, total_puntos, perfiles(nombre, apellido, nombre_visible, avatar_url, email)')
       .eq('liga_id', ligaId);
 
     setMiembros((miembrosData as unknown as Miembro[]) ?? []);
@@ -327,17 +331,13 @@ export default function EditarLigaPage() {
           <div className="space-y-2">
             {miembrosSinCreador.map((miembro) => {
               const perfil = miembro.perfiles;
-              const nombreMiembro = perfil
-                ? `${perfil.nombre} ${perfil.apellido}`.trim() || perfil.email
-                : 'Usuario';
+              const nombreMiembro = perfil ? getNombreVisible(perfil) : 'Usuario';
               return (
                 <div
                   key={miembro.usuario_id}
                   className="flex items-center gap-3 p-3 bg-gray-800/50 rounded-xl"
                 >
-                  <div className="w-8 h-8 rounded-full bg-verde-700 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
-                    {nombreMiembro.charAt(0).toUpperCase()}
-                  </div>
+                  <Avatar name={nombreMiembro} avatarUrl={perfil?.avatar_url} sizeClassName="w-8 h-8" />
                   <div className="flex-1 min-w-0">
                     <span className="font-medium text-sm text-white truncate block">{nombreMiembro}</span>
                     {perfil?.email && (
