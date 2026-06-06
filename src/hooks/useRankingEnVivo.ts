@@ -7,9 +7,7 @@ export interface MiembroRanking extends DatosDesempate {
   usuarioId: string;
   nombre: string;
   apellido: string;
-  nombreVisible?: string;
   email: string;
-  avatarUrl?: string;
   puntosParciales: number;
   totalConParciales: number;
 }
@@ -23,7 +21,7 @@ export function useRankingEnVivo(ligaId: string) {
       .select(`
         usuario_id,
         total_puntos,
-        perfiles (nombre, apellido, nombre_visible, avatar_url, email)
+        perfiles (nombre, apellido, email)
       `)
       .eq('liga_id', ligaId)
       .order('total_puntos', { ascending: false });
@@ -33,7 +31,7 @@ export function useRankingEnVivo(ligaId: string) {
     interface MiembroRow {
       usuario_id: string;
       total_puntos: number;
-      perfiles: { nombre: string; apellido: string; nombre_visible?: string; avatar_url?: string; email: string } | null;
+      perfiles: { nombre: string; apellido: string; email: string } | null;
     }
 
     interface PartidoResumen {
@@ -91,8 +89,6 @@ export function useRankingEnVivo(ligaId: string) {
           usuarioId: miembro.usuario_id,
           nombre: miembro.perfiles?.nombre ?? '',
           apellido: miembro.perfiles?.apellido ?? '',
-          nombreVisible: miembro.perfiles?.nombre_visible ?? '',
-          avatarUrl: miembro.perfiles?.avatar_url ?? '',
           email: miembro.perfiles?.email ?? '',
           totalPuntos: miembro.total_puntos ?? 0,
           exactos,
