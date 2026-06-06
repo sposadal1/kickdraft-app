@@ -9,6 +9,7 @@ CREATE TABLE perfiles (
   nombre TEXT NOT NULL,
   apellido TEXT NOT NULL,
   email TEXT NOT NULL UNIQUE,
+  nombre_visible TEXT,
   avatar_url TEXT,
   creado_en TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );

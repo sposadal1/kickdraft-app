@@ -19,12 +19,14 @@ export async function GET(request: NextRequest) {
       const partes = nombreCompleto.trim().split(' ');
       const nombre = partes[0] || '';
       const apellido = partes.slice(1).join(' ') || '';
+      const nombreVisible = nombreCompleto.trim() || `${nombre} ${apellido}`.trim() || data.user.email || 'Usuario';
 
       const { error: upsertError } = await supabase.from('perfiles').upsert({
         id: data.user.id,
         email: data.user.email ?? '',
         nombre,
         apellido,
+        nombre_visible: nombreVisible,
       }, { onConflict: 'id' });
       if (upsertError) console.error('Error al guardar perfil:', upsertError.message);
     }
