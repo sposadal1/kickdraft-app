@@ -20,8 +20,6 @@ import {
   Table,
 } from 'lucide-react';
 import AdSenseClassification from '@/components/ligas/AdSenseClassification';
-import Avatar from '@/components/profile/Avatar';
-import { getNombreVisible } from '@/lib/profile';
 
 interface Miembro {
   usuario_id: string;
@@ -31,8 +29,6 @@ interface Miembro {
   perfiles: {
     nombre: string;
     apellido: string;
-    nombre_visible?: string;
-    avatar_url?: string;
     email: string;
   } | null;
 }
@@ -146,7 +142,7 @@ export default function DetalleLigaPage() {
 
     const { data: miembrosData } = await supabase
       .from('miembros_liga')
-      .select('usuario_id, total_puntos, exactos, marcadores_acertados, perfiles(nombre, apellido, nombre_visible, avatar_url, email)')
+      .select('usuario_id, total_puntos, exactos, marcadores_acertados, perfiles(nombre, apellido, email)')
       .eq('liga_id', ligaId)
       .order('total_puntos', { ascending: false });
 
@@ -219,7 +215,7 @@ export default function DetalleLigaPage() {
     return miembros
       .map((m) => {
         const perfil = m.perfiles;
-        const nombre = perfil ? getNombreVisible(perfil) : 'Usuario';
+        const nombre = perfil ? `${perfil.nombre} ${perfil.apellido}`.trim() || perfil.email : 'Usuario';
         const pred = prediccionesByUser[m.usuario_id];
         return {
           usuario_id: m.usuario_id,
@@ -600,7 +596,7 @@ export default function DetalleLigaPage() {
           <div className="space-y-3">
             {miembros.map((miembro, idx) => {
               const perfil = miembro.perfiles;
-              const nombre = perfil ? getNombreVisible(perfil) : 'Usuario';
+              const nombre = perfil ? `${perfil.nombre} ${perfil.apellido}`.trim() || perfil.email : 'Usuario';
               const esYo = miembro.usuario_id === usuario?.id;
               const pred = prediccionesByUser[miembro.usuario_id];
               const showPredLine = plusHabilitado && (pred?.campeon || pred?.goleador);
@@ -611,7 +607,9 @@ export default function DetalleLigaPage() {
                   className={`flex items-center gap-3 p-3 rounded-xl ${esYo ? 'bg-verde-900/30 border border-verde-800/50' : 'bg-gray-800/50'}`}
                 >
                   <span className="text-gray-500 font-bold text-sm w-5 text-center">{idx + 1}</span>
-                  <Avatar name={nombre} avatarUrl={perfil?.avatar_url} sizeClassName="w-8 h-8" />
+                  <div className="w-8 h-8 rounded-full bg-verde-700 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
+                    {nombre.charAt(0).toUpperCase()}
+                  </div>
                   <div className="flex-1 min-w-0">
                     <span className={`font-medium text-sm ${esYo ? 'text-verde-400' : 'text-white'}`}>
                       {nombre}{esYo && <span className="ml-1 text-xs text-gray-500">(tú)</span>}

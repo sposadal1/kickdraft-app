@@ -1,8 +1,6 @@
 import { MiembroLiga } from '@/types/liga';
 import { Usuario } from '@/types/usuario';
 import { Trophy, Medal } from 'lucide-react';
-import Avatar from '@/components/profile/Avatar';
-import { getNombreVisible } from '@/lib/profile';
 
 interface FilaClasificacion extends MiembroLiga {
   usuario: Usuario;
@@ -35,13 +33,6 @@ export default function TablaClasificacion({ clasificacion, usuarioActualId }: P
         <tbody>
           {ordenada.map((fila, idx) => {
             const esActual = fila.usuarioId === usuarioActualId;
-            const nombre = getNombreVisible({
-              nombre: fila.usuario.nombre,
-              apellido: fila.usuario.apellido,
-              email: fila.usuario.email,
-              nombre_visible: fila.usuario.nombreVisible,
-            });
-
             return (
               <tr
                 key={fila.usuarioId}
@@ -54,9 +45,11 @@ export default function TablaClasificacion({ clasificacion, usuarioActualId }: P
                 </td>
                 <td className="py-3 pr-4">
                   <div className="flex items-center gap-2">
-                    <Avatar name={nombre} avatarUrl={fila.usuario.avatarUrl} sizeClassName="w-7 h-7" />
+                    <div className="w-7 h-7 rounded-full bg-verde-700 flex items-center justify-center text-white text-xs font-bold">
+                      {fila.usuario.nombre.charAt(0)}{fila.usuario.apellido.charAt(0)}
+                    </div>
                     <span className={`font-medium ${esActual ? 'text-verde-400' : 'text-white'}`}>
-                      {nombre}
+                      {fila.usuario.nombre} {fila.usuario.apellido}
                       {esActual && <span className="ml-1 text-xs text-gray-500">(tú)</span>}
                     </span>
                   </div>

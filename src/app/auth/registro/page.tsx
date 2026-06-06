@@ -3,9 +3,8 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Trophy, Eye, EyeOff } from 'lucide-react';
+import { Trophy, Eye, EyeOff, Mail } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
-import VerificationScreen from '@/components/auth/VerificationScreen';
 
 export default function RegistroPage() {
   const router = useRouter();
@@ -76,7 +75,26 @@ export default function RegistroPage() {
   }
 
   if (esperandoConfirmacion) {
-    return <VerificationScreen email={form.email} />;
+    return (
+      <div className="min-h-[calc(100vh-64px)] flex items-center justify-center px-4 py-12">
+        <div className="w-full max-w-md text-center">
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-verde-900/40 rounded-2xl mb-4">
+            <Mail className="w-8 h-8 text-verde-400" />
+          </div>
+          <h2 className="text-2xl font-bold text-white mb-2">¡Revisa tu email!</h2>
+          <p className="text-gray-400 mb-6">
+            Enviamos un enlace de confirmación a <strong className="text-white">{form.email}</strong>.
+            Haz clic en él para activar tu cuenta e ingresar a Kickdraft.
+          </p>
+          <p className="text-sm text-gray-500 mb-4">
+            ¿No lo ves? Revisa la carpeta de spam o correo no deseado.
+          </p>
+          <Link href="/auth/login" className="text-verde-400 hover:text-verde-300 text-sm font-medium">
+            Volver al inicio de sesión
+          </Link>
+        </div>
+      </div>
+    );
   }
 
   return (
